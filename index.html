@@ -759,7 +759,7 @@
 
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a>
-    <span class="version">Bellbrook Darts Club Scoreboard · v1.7</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v1.8</span>
 </footer>
 
 <script>
@@ -1896,48 +1896,215 @@ function showKillerWinner(player) {
     showScreen('winnerScreen');
 }
 
+// ===== DOCX MATCH RECORD =====
+// Builds a real .docx (a zip of WordprocessingML XML) with no libraries,
+// so downloads work offline at the pub.
+
+let CRC_TABLE = null;
+
+function crc32(data) {
+    if (!CRC_TABLE) {
+        CRC_TABLE = new Uint32Array(256);
+        for (let i = 0; i < 256; i++) {
+            let c = i;
+            for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+            CRC_TABLE[i] = c >>> 0;
+        }
+    }
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < data.length; i++) crc = CRC_TABLE[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+function buildZip(files) {
+    const enc = new TextEncoder();
+    const u16 = n => new Uint8Array([n & 255, (n >> 8) & 255]);
+    const u32 = n => new Uint8Array([n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >> 24) & 255]);
+    const chunks = [];
+    const central = [];
+    let offset = 0;
+
+    files.forEach(f => {
+        const name = enc.encode(f.name);
+        const data = enc.encode(f.content);
+        const crc = crc32(data);
+        // DOS date 0x21 = 1 Jan 1980, the earliest valid zip timestamp
+        const local = [u32(0x04034b50), u16(20), u16(0), u16(0), u16(0), u16(0x21),
+                       u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0), name, data];
+        const localSize = local.reduce((s, a) => s + a.length, 0);
+        central.push([u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(0), u16(0x21),
+                      u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0), u16(0),
+                      u16(0), u16(0), u32(0), u32(offset), name]);
+        chunks.push(...local);
+        offset += localSize;
+    });
+
+    const centralStart = offset;
+    let centralSize = 0;
+    central.forEach(entry => {
+        entry.forEach(a => { chunks.push(a); centralSize += a.length; });
+    });
+    chunks.push(u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length),
+                u32(centralSize), u32(centralStart), u16(0));
+    return new Blob(chunks, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
+
+function docxEsc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function docxRun(text, o = {}) {
+    let pr = '<w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>';
+    if (o.b) pr += '<w:b/>';
+    if (o.caps) pr += '<w:caps/>';
+    if (o.color) pr += `<w:color w:val="${o.color}"/>`;
+    if (o.sz) pr += `<w:sz w:val="${o.sz}"/><w:szCs w:val="${o.sz}"/>`;
+    if (o.spacing) pr += `<w:spacing w:val="${o.spacing}"/>`;
+    return `<w:r><w:rPr>${pr}</w:rPr><w:t xml:space="preserve">${docxEsc(text)}</w:t></w:r>`;
+}
+
+function docxPara(runs, o = {}) {
+    let pr = '';
+    if (o.align) pr += `<w:jc w:val="${o.align}"/>`;
+    pr += `<w:spacing w:before="${o.before || 0}" w:after="${o.after !== undefined ? o.after : 120}"/>`;
+    return `<w:p><w:pPr>${pr}</w:pPr>${runs}</w:p>`;
+}
+
+function docxCell(runs, o = {}) {
+    let pr = '';
+    if (o.fill) pr += `<w:shd w:val="clear" w:color="auto" w:fill="${o.fill}"/>`;
+    pr += '<w:tcMar><w:top w:w="60" w:type="dxa"/><w:bottom w:w="60" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar>';
+    pr += '<w:vAlign w:val="center"/>';
+    return `<w:tc><w:tcPr>${pr}</w:tcPr>${docxPara(runs, { after: 0, align: o.align })}</w:tc>`;
+}
+
+function docxTable(rows) {
+    const b = 'w:val="single" w:sz="6" w:space="0" w:color="C8BFA8"';
+    return `<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblBorders>` +
+        `<w:top ${b}/><w:left ${b}/><w:bottom ${b}/><w:right ${b}/><w:insideH ${b}/><w:insideV ${b}/>` +
+        `</w:tblBorders></w:tblPr>${rows.map(cells => `<w:tr>${cells.join('')}</w:tr>`).join('')}</w:tbl>`;
+}
+
+function docxHeaderRow(labels) {
+    return labels.map(l => docxCell(docxRun(l, { b: 1, caps: 1, sz: 20, color: '1C1608', spacing: 20 }), { fill: 'C9A13B' }));
+}
+
 function downloadHistory() {
     const gameMode = gameState.gameMode === 'x01' ? `${gameState.gameType}` :
                      gameState.gameMode === 'killer' ? 'Killer' : 'Shanghai';
-    const date = new Date().toISOString().split('T')[0];
+    const dateFile = new Date().toISOString().split('T')[0];
+    const dateNice = new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const winner = document.getElementById('winnerName').textContent;
 
-    let content = `Bellbrook Darts Club Scoreboard - ${gameMode}\n`;
-    content += `Version: 1.7\n`;
-    content += `Date: ${date}\n`;
-    content += `Winner: ${winner}\n`;
-    content += `\n=== Players ===\n`;
+    const BRASS = 'A37F24', RED = 'B23A2E', GREEN = '2F6E4F', INK = '2A241D', DIM = '6B6353';
+    const parts = [];
 
-    gameState.players.forEach(p => {
-        if (gameState.gameMode === 'x01') {
+    // Club header
+    parts.push(docxPara(docxRun('BELLBROOK DARTS CLUB', { b: 1, sz: 44, spacing: 40, color: INK }), { align: 'center', after: 40 }));
+    parts.push(docxPara(docxRun('BELLBROOK HOTEL · MACLEAY VALLEY', { sz: 18, spacing: 60, color: BRASS }), { align: 'center', after: 60 }));
+    parts.push(docxPara(docxRun('· · ·', { color: BRASS, sz: 22 }), { align: 'center', after: 200 }));
+
+    // Match summary
+    parts.push(docxPara(docxRun(`MATCH RECORD — ${gameMode}`.toUpperCase(), { b: 1, sz: 30, color: GREEN, spacing: 20 }), { align: 'center', after: 80 }));
+    parts.push(docxPara(docxRun(dateNice, { sz: 22, color: DIM }), { align: 'center', after: 60 }));
+    parts.push(docxPara(
+        docxRun('Winner: ', { sz: 26, color: INK }) + docxRun(winner, { b: 1, sz: 26, color: BRASS }),
+        { align: 'center', after: 240 }));
+
+    // Players table
+    parts.push(docxPara(docxRun('PLAYERS', { b: 1, sz: 24, color: INK, spacing: 30 }), { before: 120, after: 80 }));
+    const playerRows = [];
+    if (gameState.gameMode === 'x01') {
+        playerRows.push(docxHeaderRow(['Player', 'Final Score', 'Average / Turn']));
+        gameState.players.forEach(p => {
             const avg = p.turns > 0 ? (p.totalScored / p.turns).toFixed(1) : '0.0';
-            content += `${p.name} - Final Score: ${p.score}, Average: ${avg}\n`;
-        } else if (gameState.gameMode === 'killer') {
-            const status = p.eliminated ? 'ELIMINATED' : 'Active';
-            content += `${p.name} (${p.claimedNumber}) - Strikes: ${p.strikes}/5, Status: ${status}\n`;
-        } else {
+            const isWinner = p.name === winner;
+            const fill = isWinner ? 'F3ECD9' : undefined;
+            playerRows.push([
+                docxCell(docxRun(p.name + (isWinner ? '  🎯' : ''), { b: isWinner ? 1 : 0, sz: 22, color: INK }), { fill }),
+                docxCell(docxRun(String(p.score), { sz: 22, color: INK }), { fill, align: 'center' }),
+                docxCell(docxRun(avg, { sz: 22, color: INK }), { fill, align: 'center' })
+            ]);
+        });
+    } else if (gameState.gameMode === 'killer') {
+        playerRows.push(docxHeaderRow(['Player', 'Number', 'Strikes', 'Result']));
+        gameState.players.forEach(p => {
+            const isWinner = p.name === winner;
+            const fill = isWinner ? 'F3ECD9' : undefined;
+            const numText = p.claimedNumber === 25 ? 'Bull 25' : p.claimedNumber === 50 ? 'Bull 50' : String(p.claimedNumber);
+            playerRows.push([
+                docxCell(docxRun(p.name + (isWinner ? '  🎯' : ''), { b: isWinner ? 1 : 0, sz: 22, color: INK }), { fill }),
+                docxCell(docxRun(numText, { sz: 22, color: INK }), { fill, align: 'center' }),
+                docxCell(docxRun(`${p.strikes}/5`, { sz: 22, color: INK }), { fill, align: 'center' }),
+                docxCell(docxRun(p.eliminated ? 'ELIMINATED' : 'WINNER', { b: 1, sz: 20, color: p.eliminated ? RED : GREEN }), { fill, align: 'center' })
+            ]);
+        });
+    } else {
+        playerRows.push(docxHeaderRow(['Player', 'Number', 'Result']));
+        gameState.players.forEach(p => {
+            const isFirst = p.place === 1;
+            const fill = isFirst ? 'F3ECD9' : undefined;
             const result = p.place ? `Finished ${shanghaiOrdinal(p.place)}` : 'Did not place';
-            content += `${p.name} (${p.claimedNumber}) - ${result}\n`;
-        }
-    });
+            playerRows.push([
+                docxCell(docxRun(p.name + (isFirst ? '  🎯' : ''), { b: isFirst ? 1 : 0, sz: 22, color: INK }), { fill }),
+                docxCell(docxRun(String(p.claimedNumber), { sz: 22, color: INK }), { fill, align: 'center' }),
+                docxCell(docxRun(result, { b: p.place ? 1 : 0, sz: 22, color: p.place ? GREEN : DIM }), { fill, align: 'center' })
+            ]);
+        });
+    }
+    parts.push(docxTable(playerRows));
 
-    content += `\n=== Game History ===\n`;
-    gameState.history.reverse().forEach((h, i) => {
+    // Turn-by-turn history (oldest first)
+    parts.push(docxPara(docxRun('TURN BY TURN', { b: 1, sz: 24, color: INK, spacing: 30 }), { before: 280, after: 80 }));
+    const histRows = [docxHeaderRow(['#', 'What Happened'])];
+    gameState.history.slice().reverse().forEach((h, i) => {
+        let text, color = INK, bold = 0;
         if (gameState.gameMode === 'x01') {
-            content += `${i + 1}. ${h.player}: ${h.bust ? 'BUST' : `Scored ${h.scored} → ${h.newScore}`}${h.details || ''}\n`;
-        } else if (gameState.gameMode === 'killer') {
-            content += `${i + 1}. ${h.action}\n`;
+            text = `${h.player}: ${h.bust ? 'BUST' : `Scored ${h.scored} → ${h.newScore}`}${h.details || ''}`;
+            if (h.bust) { color = RED; bold = 1; }
         } else {
-            content += `${i + 1}. ${h.player}: ${h.action}\n`;
+            text = `${h.player}: ${h.action}`;
+            if (/ELIMINATED/.test(h.action)) { color = RED; bold = 1; }
+            if (/SHANGHAI|Takes /.test(h.action)) { color = GREEN; bold = 1; }
         }
+        histRows.push([
+            docxCell(docxRun(String(i + 1), { sz: 20, color: DIM }), { align: 'center' }),
+            docxCell(docxRun(text, { sz: 20, color, b: bold }))
+        ]);
     });
+    parts.push(docxTable(histRows));
 
-    // Create download
-    const blob = new Blob([content], { type: 'text/plain' });
+    // Footer
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v1.8', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+
+    const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
+        parts.join('') +
+        '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr>' +
+        '</w:body></w:document>';
+
+    const contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+        '<Default Extension="xml" ContentType="application/xml"/>' +
+        '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+        '</Types>';
+
+    const rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+        '</Relationships>';
+
+    const blob = buildZip([
+        { name: '[Content_Types].xml', content: contentTypes },
+        { name: '_rels/.rels', content: rels },
+        { name: 'word/document.xml', content: documentXml }
+    ]);
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `bellbrook-darts-history-${gameMode}-${date}.txt`;
+    a.download = `bellbrook-darts-match-${gameMode}-${dateFile}.docx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
