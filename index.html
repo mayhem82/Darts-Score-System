@@ -526,6 +526,7 @@
     <div class="game-select">
         <button id="x01ModeBtn" onclick="selectGameMode('x01')">x01</button>
         <button id="killerModeBtn" class="secondary" onclick="selectGameMode('killer')">Killer</button>
+        <button id="shanghaiModeBtn" class="secondary" onclick="selectGameMode('shanghai')">Shanghai</button>
     </div>
 
     <div id="x01Setup" style="display: block;">
@@ -548,6 +549,11 @@
     <div id="killerSetup" style="display: none;">
         <h2>Killer Mode</h2>
         <p class="setup-note">Each player throws to claim a unique number. Hit OPPONENT numbers to give them strikes. Hit YOUR OWN number to remove strikes from yourself. First to 5 strikes is ELIMINATED. Last player standing wins.</p>
+    </div>
+
+    <div id="shanghaiSetup" style="display: none;">
+        <h2>Shanghai Mode</h2>
+        <p class="setup-note">Each player throws with their non-dominant hand to claim a number — that number is theirs for the WHOLE game. Hit a SINGLE, a DOUBLE and a TRIPLE of your own number, in any order, to finish. First four to finish take First, Second, Third and Fourth.</p>
     </div>
 
     <h2>Add Players (Min 2, Max 12)</h2>
@@ -691,11 +697,62 @@
     <div class="history" id="killerHistory"></div>
 </div>
 
+<!-- Shanghai Setup Screen -->
+<div id="shanghaiSetupScreen" class="screen">
+    <h1>Shanghai — Claim Numbers</h1>
+    <p class="setup-note">Throw with non-dominant hand to claim your number — it's yours for the whole game</p>
+
+    <div class="scoreboard" id="shanghaiClaimBoard"></div>
+
+    <div id="shanghaiClaimSection">
+        <h2 id="shanghaiClaimPlayer">Player's Turn</h2>
+
+        <div class="number-grid" id="shanghaiClaimGrid"></div>
+
+        <button onclick="claimShanghaiNumber()" id="claimShanghaiBtn" disabled>Claim Number</button>
+    </div>
+
+    <button onclick="startShanghaiPlay()" id="startShanghaiPlayBtn" disabled>Start Game</button>
+</div>
+
+<!-- Shanghai Game Screen -->
+<div id="shanghaiGameScreen" class="screen">
+    <h1>Shanghai</h1>
+
+    <div class="scoreboard" id="shanghaiScoreboard"></div>
+
+    <div class="dart-input">
+        <h2 id="shanghaiCurrentPlayer">Player's Turn</h2>
+        <div style="text-align: center; color: #b9ad92; margin: 10px 0;">
+            Dart <span id="shanghaiDartNumber">1</span> of 3 · Your number: <span id="shanghaiTarget" style="color: #c9a13b; font-weight: 700;"></span>
+        </div>
+
+        <div class="label">What Did the Dart Hit?</div>
+        <div class="multiplier-grid">
+            <button class="multiplier-btn" id="shSingleBtn" onclick="shanghaiHit('single')">Single</button>
+            <button class="multiplier-btn" id="shDoubleBtn" onclick="shanghaiHit('double')">Double</button>
+            <button class="multiplier-btn" id="shTripleBtn" onclick="shanghaiHit('triple')">Triple</button>
+        </div>
+        <button class="secondary" onclick="shanghaiMiss()" id="shMissBtn">Miss / Other Number</button>
+        <button class="secondary" onclick="undoShanghaiDart()" id="undoShanghaiBtn" disabled>Undo Last Dart</button>
+    </div>
+
+    <div class="dart-display" id="shanghaiDartDisplay">
+        <div class="label">This Turn</div>
+    </div>
+
+    <button onclick="endShanghaiTurn()" id="endShanghaiTurnBtn">End Turn</button>
+
+    <button class="danger" onclick="confirmReset()">Reset Game</button>
+
+    <div class="history" id="shanghaiHistory"></div>
+</div>
+
 </main>
 
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a>
-    <span class="version">Bellbrook Darts Club Scoreboard · v1.2</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v1.3</span>
 </footer>
 
 <script>
@@ -717,19 +774,17 @@ let gameState = {
 function selectGameMode(mode) {
     gameState.gameMode = mode;
 
-    // Update button styles
-    if (mode === 'x01') {
-        document.getElementById('x01ModeBtn').classList.remove('secondary');
-        document.getElementById('killerModeBtn').classList.add('secondary');
-        document.getElementById('x01Setup').style.display = 'block';
-        document.getElementById('killerSetup').style.display = 'none';
-    } else {
-        document.getElementById('x01ModeBtn').classList.add('secondary');
-        document.getElementById('killerModeBtn').classList.remove('secondary');
-        document.getElementById('x01Setup').style.display = 'none';
-        document.getElementById('killerSetup').style.display = 'block';
-        // For Killer, we don't need a game type selected
-        gameState.gameType = 'killer';
+    // Update button styles and setup panels
+    const modeBtns = { x01: 'x01ModeBtn', killer: 'killerModeBtn', shanghai: 'shanghaiModeBtn' };
+    const modePanels = { x01: 'x01Setup', killer: 'killerSetup', shanghai: 'shanghaiSetup' };
+    Object.keys(modeBtns).forEach(m => {
+        document.getElementById(modeBtns[m]).classList.toggle('secondary', m !== mode);
+        document.getElementById(modePanels[m]).style.display = m === mode ? 'block' : 'none';
+    });
+
+    // Killer and Shanghai don't need a game type selected
+    if (mode !== 'x01') {
+        gameState.gameType = mode;
     }
 
     checkStartButton();
@@ -797,7 +852,7 @@ function checkStartButton() {
     if (gameState.gameMode === 'x01') {
         btn.disabled = !gameState.gameType || gameState.players.length < 2;
     } else {
-        // Killer mode just needs 2+ players
+        // Killer and Shanghai just need 2+ players
         btn.disabled = gameState.players.length < 2;
     }
 }
@@ -805,8 +860,10 @@ function checkStartButton() {
 function startGame() {
     if (gameState.gameMode === 'x01') {
         startX01Game();
-    } else {
+    } else if (gameState.gameMode === 'killer') {
         startKillerGame();
+    } else {
+        startShanghaiGame();
     }
 }
 
@@ -1805,12 +1862,13 @@ function showKillerWinner(player) {
 }
 
 function downloadHistory() {
-    const gameMode = gameState.gameMode === 'x01' ? `${gameState.gameType}` : 'Killer';
+    const gameMode = gameState.gameMode === 'x01' ? `${gameState.gameType}` :
+                     gameState.gameMode === 'killer' ? 'Killer' : 'Shanghai';
     const date = new Date().toISOString().split('T')[0];
     const winner = document.getElementById('winnerName').textContent;
 
     let content = `Bellbrook Darts Club Scoreboard - ${gameMode}\n`;
-    content += `Version: 1.2\n`;
+    content += `Version: 1.3\n`;
     content += `Date: ${date}\n`;
     content += `Winner: ${winner}\n`;
     content += `\n=== Players ===\n`;
@@ -1819,9 +1877,12 @@ function downloadHistory() {
         if (gameState.gameMode === 'x01') {
             const avg = p.turns > 0 ? (p.totalScored / p.turns).toFixed(1) : '0.0';
             content += `${p.name} - Final Score: ${p.score}, Average: ${avg}\n`;
-        } else {
+        } else if (gameState.gameMode === 'killer') {
             const status = p.eliminated ? 'ELIMINATED' : 'Active';
             content += `${p.name} (${p.claimedNumber}) - Strikes: ${p.strikes}/5, Status: ${status}\n`;
+        } else {
+            const result = p.place ? `Finished ${shanghaiOrdinal(p.place)}` : 'Did not place';
+            content += `${p.name} (${p.claimedNumber}) - ${result}\n`;
         }
     });
 
@@ -1829,8 +1890,10 @@ function downloadHistory() {
     gameState.history.reverse().forEach((h, i) => {
         if (gameState.gameMode === 'x01') {
             content += `${i + 1}. ${h.player}: ${h.bust ? 'BUST' : `Scored ${h.scored} → ${h.newScore}`}${h.details || ''}\n`;
-        } else {
+        } else if (gameState.gameMode === 'killer') {
             content += `${i + 1}. ${h.action}\n`;
+        } else {
+            content += `${i + 1}. ${h.player}: ${h.action}\n`;
         }
     });
 
@@ -1847,6 +1910,364 @@ function downloadHistory() {
 }
 
 // ===== END KILLER GAME FUNCTIONS =====
+
+// ===== SHANGHAI GAME FUNCTIONS =====
+
+const SHANGHAI_PLACES = ['First', 'Second', 'Third', 'Fourth'];
+
+function shanghaiOrdinal(place) {
+    return SHANGHAI_PLACES[place - 1] || `${place}th`;
+}
+
+let shanghaiState = {
+    claimingPlayerIndex: 0,
+    selectedNumber: null,
+    currentDarts: [],
+    placings: []
+};
+
+function startShanghaiGame() {
+    gameState.players.forEach(p => {
+        p.claimedNumber = null;
+        p.shHits = { single: false, double: false, triple: false };
+        p.finished = false;
+        p.place = null;
+    });
+    gameState.currentPlayerIndex = 0;
+    gameState.history = [];
+    gameState.claimedNumbers = [];
+    shanghaiState.claimingPlayerIndex = 0;
+    shanghaiState.selectedNumber = null;
+    shanghaiState.currentDarts = [];
+    shanghaiState.placings = [];
+
+    showScreen('shanghaiSetupScreen');
+
+    document.getElementById('shanghaiClaimPlayer').textContent =
+        gameState.players[0].name + "'s Turn";
+    document.getElementById('shanghaiClaimSection').style.display = 'block';
+    document.getElementById('startShanghaiPlayBtn').disabled = true;
+
+    renderShanghaiClaimBoard();
+    renderShanghaiClaimGrid();
+}
+
+function renderShanghaiClaimBoard() {
+    const board = document.getElementById('shanghaiClaimBoard');
+    board.innerHTML = gameState.players.map((p, i) => {
+        const claimed = p.claimedNumber !== null;
+        const numberText = claimed ? p.claimedNumber : 'Not claimed';
+
+        return `
+            <div class="player-score ${i === shanghaiState.claimingPlayerIndex && !claimed ? 'current' : ''}">
+                <div class="player-info">
+                    <div class="player-name">${p.name}</div>
+                </div>
+                <div class="score-display" style="font-size: 24px;">${numberText}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderShanghaiClaimGrid() {
+    const grid = document.getElementById('shanghaiClaimGrid');
+    const numbers = [];
+
+    // 1-20 only: a Shanghai needs a triple, so bulls can't be claimed
+    for (let i = 1; i <= 20; i++) numbers.push(i);
+
+    grid.innerHTML = numbers.map(n => {
+        const claimed = gameState.claimedNumbers.includes(n);
+        const disabled = claimed ? 'disabled' : '';
+        const style = claimed ? 'opacity: 0.3;' : '';
+        return `<button class="number-btn" onclick="selectShanghaiClaimNumber(${n})" ${disabled} style="${style}">${n}</button>`;
+    }).join('');
+}
+
+function selectShanghaiClaimNumber(num) {
+    if (gameState.claimedNumbers.includes(num)) return;
+
+    shanghaiState.selectedNumber = num;
+
+    document.querySelectorAll('#shanghaiClaimGrid .number-btn').forEach(btn => {
+        btn.classList.remove('selected');
+        if (parseInt(btn.textContent) === num) {
+            btn.classList.add('selected');
+        }
+    });
+
+    document.getElementById('claimShanghaiBtn').disabled = false;
+}
+
+function claimShanghaiNumber() {
+    const num = shanghaiState.selectedNumber;
+    if (num === null || gameState.claimedNumbers.includes(num)) return;
+
+    const player = gameState.players[shanghaiState.claimingPlayerIndex];
+    player.claimedNumber = num;
+    gameState.claimedNumbers.push(num);
+
+    shanghaiState.claimingPlayerIndex++;
+    shanghaiState.selectedNumber = null;
+    document.getElementById('claimShanghaiBtn').disabled = true;
+
+    if (shanghaiState.claimingPlayerIndex >= gameState.players.length) {
+        document.getElementById('startShanghaiPlayBtn').disabled = false;
+        document.getElementById('shanghaiClaimSection').style.display = 'none';
+    } else {
+        document.getElementById('shanghaiClaimPlayer').textContent =
+            gameState.players[shanghaiState.claimingPlayerIndex].name + "'s Turn";
+    }
+
+    renderShanghaiClaimBoard();
+    renderShanghaiClaimGrid();
+}
+
+function startShanghaiPlay() {
+    gameState.currentPlayerIndex = 0;
+    showScreen('shanghaiGameScreen');
+    startShanghaiTurn();
+}
+
+function renderShanghaiScoreboard() {
+    const board = document.getElementById('shanghaiScoreboard');
+    board.innerHTML = gameState.players.map((player, i) => {
+        const isCurrent = i === gameState.currentPlayerIndex && !player.finished;
+
+        let status;
+        if (player.finished) {
+            status = `Finished ${shanghaiOrdinal(player.place)}`;
+        } else {
+            const seg = t => player.shHits[t] ? '✓' : '—';
+            status = `Single ${seg('single')} · Double ${seg('double')} · Triple ${seg('triple')}`;
+        }
+
+        const finishedStyle = player.finished ? 'opacity: 0.65;' : '';
+        const placeText = player.finished ? shanghaiOrdinal(player.place).toUpperCase() : '';
+
+        return `
+            <div class="player-score ${isCurrent ? 'current' : ''}" style="${finishedStyle}">
+                <div class="player-info">
+                    <div class="player-name">${player.name} (${player.claimedNumber})</div>
+                    <div class="player-avg">${status}</div>
+                </div>
+                <div class="score-display" style="font-size: 22px; color: #c9a13b;">${placeText}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function updateShanghaiHitButtons() {
+    const player = gameState.players[gameState.currentPlayerIndex];
+    const btns = { single: 'shSingleBtn', double: 'shDoubleBtn', triple: 'shTripleBtn' };
+    const labels = { single: 'Single', double: 'Double', triple: 'Triple' };
+    const turnDone = shanghaiState.currentDarts.length >= 3;
+
+    Object.keys(btns).forEach(t => {
+        const btn = document.getElementById(btns[t]);
+        btn.classList.toggle('selected', player.shHits[t]);
+        btn.textContent = player.shHits[t] ? `${labels[t]} ✓` : labels[t];
+        btn.disabled = turnDone;
+    });
+    document.getElementById('shMissBtn').disabled = turnDone;
+}
+
+function startShanghaiTurn() {
+    // Skip finished players
+    while (gameState.players[gameState.currentPlayerIndex].finished) {
+        gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    }
+
+    const player = gameState.players[gameState.currentPlayerIndex];
+    shanghaiState.currentDarts = [];
+
+    document.getElementById('shanghaiCurrentPlayer').textContent = player.name + "'s Turn";
+    document.getElementById('shanghaiDartNumber').textContent = '1';
+    document.getElementById('shanghaiTarget').textContent = player.claimedNumber;
+    document.getElementById('undoShanghaiBtn').disabled = true;
+
+    renderShanghaiScoreboard();
+    renderShanghaiDartDisplay();
+    updateShanghaiHitButtons();
+    renderShanghaiHistory();
+}
+
+function shanghaiHit(type) {
+    if (shanghaiState.currentDarts.length >= 3) return;
+
+    const player = gameState.players[gameState.currentPlayerIndex];
+    const typeName = type.charAt(0).toUpperCase() + type.slice(1);
+    const wasNew = !player.shHits[type];
+    player.shHits[type] = true;
+
+    shanghaiState.currentDarts.push({ type: type, wasNew: wasNew });
+
+    gameState.history.unshift({
+        player: player.name,
+        action: `Hit ${typeName} ${player.claimedNumber}${wasNew ? '' : ' (already had it)'}`
+    });
+
+    document.getElementById('undoShanghaiBtn').disabled = false;
+
+    // Complete: single + double + triple all hit
+    if (player.shHits.single && player.shHits.double && player.shHits.triple) {
+        completeShanghai(player);
+        return;
+    }
+
+    document.getElementById('shanghaiDartNumber').textContent =
+        Math.min(shanghaiState.currentDarts.length + 1, 3);
+
+    renderShanghaiScoreboard();
+    renderShanghaiDartDisplay();
+    updateShanghaiHitButtons();
+    renderShanghaiHistory();
+}
+
+function shanghaiMiss() {
+    if (shanghaiState.currentDarts.length >= 3) return;
+
+    const player = gameState.players[gameState.currentPlayerIndex];
+    shanghaiState.currentDarts.push({ type: 'miss', wasNew: false });
+
+    gameState.history.unshift({
+        player: player.name,
+        action: 'Miss'
+    });
+
+    document.getElementById('undoShanghaiBtn').disabled = false;
+    document.getElementById('shanghaiDartNumber').textContent =
+        Math.min(shanghaiState.currentDarts.length + 1, 3);
+
+    renderShanghaiDartDisplay();
+    updateShanghaiHitButtons();
+    renderShanghaiHistory();
+}
+
+function undoShanghaiDart() {
+    if (shanghaiState.currentDarts.length === 0) return;
+
+    const removedDart = shanghaiState.currentDarts.pop();
+    const player = gameState.players[gameState.currentPlayerIndex];
+
+    if (removedDart.type !== 'miss' && removedDart.wasNew) {
+        player.shHits[removedDart.type] = false;
+    }
+
+    // Remove last history entry
+    gameState.history.shift();
+
+    document.getElementById('shanghaiDartNumber').textContent =
+        (shanghaiState.currentDarts.length + 1);
+
+    if (shanghaiState.currentDarts.length === 0) {
+        document.getElementById('undoShanghaiBtn').disabled = true;
+    }
+
+    renderShanghaiScoreboard();
+    renderShanghaiDartDisplay();
+    updateShanghaiHitButtons();
+    renderShanghaiHistory();
+}
+
+function completeShanghai(player) {
+    player.finished = true;
+    player.place = shanghaiState.placings.length + 1;
+    shanghaiState.placings.push(player);
+
+    gameState.history.unshift({
+        player: player.name,
+        action: `SHANGHAI COMPLETE — finished ${shanghaiOrdinal(player.place)}!`
+    });
+
+    const unfinished = gameState.players.filter(p => !p.finished);
+
+    // All four places taken, or nobody left to play
+    if (shanghaiState.placings.length >= 4 || unfinished.length === 0) {
+        showShanghaiResults();
+        return;
+    }
+
+    // Only one player left unplaced: they take the next place automatically
+    if (unfinished.length === 1) {
+        const last = unfinished[0];
+        last.finished = true;
+        last.place = shanghaiState.placings.length + 1;
+        shanghaiState.placings.push(last);
+        gameState.history.unshift({
+            player: last.name,
+            action: `Takes ${shanghaiOrdinal(last.place)} — last player left`
+        });
+        showShanghaiResults();
+        return;
+    }
+
+    // Game continues with the next player
+    endShanghaiTurn();
+}
+
+function endShanghaiTurn() {
+    gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    startShanghaiTurn();
+}
+
+function renderShanghaiDartDisplay() {
+    const display = document.getElementById('shanghaiDartDisplay');
+
+    let html = '<div class="label">This Turn</div>';
+
+    shanghaiState.currentDarts.forEach((dart, i) => {
+        let dartText;
+        if (dart.type === 'miss') {
+            dartText = 'MISS';
+        } else {
+            const typeName = dart.type.charAt(0).toUpperCase() + dart.type.slice(1);
+            dartText = `${typeName}${dart.wasNew ? ' ✓' : ' (repeat)'}`;
+        }
+
+        html += `
+            <div class="dart-row">
+                <span>Dart ${i + 1}: ${dartText}</span>
+            </div>
+        `;
+    });
+
+    display.innerHTML = html;
+}
+
+function renderShanghaiHistory() {
+    const historyEl = document.getElementById('shanghaiHistory');
+    historyEl.innerHTML = '<div class="label">Recent History</div>' +
+        gameState.history.slice(0, 8).map(h => `
+            <div class="history-item">
+                ${h.player}: ${h.action}
+            </div>
+        `).join('');
+}
+
+function showShanghaiResults() {
+    const first = shanghaiState.placings[0];
+    document.getElementById('winnerName').textContent = first.name;
+
+    const historyEl = document.getElementById('winnerHistory');
+    const placingsHtml = shanghaiState.placings.map(p => `
+        <div class="history-item">
+            <strong>${shanghaiOrdinal(p.place)}:</strong> ${p.name} (${p.claimedNumber})
+        </div>
+    `).join('');
+
+    historyEl.innerHTML = '<div class="label">Final Placings</div>' + placingsHtml +
+        '<div class="label" style="margin-top: 12px;">Game History</div>' +
+        gameState.history.map(h => `
+            <div class="history-item">
+                ${h.player}: ${h.action}
+            </div>
+        `).join('');
+
+    showScreen('winnerScreen');
+}
+
+// ===== END SHANGHAI GAME FUNCTIONS =====
 
 function confirmReset() {
     if (confirm('Are you sure you want to reset the game? All progress will be lost.')) {
@@ -1877,6 +2298,13 @@ function resetGame() {
         currentDarts: []
     };
 
+    shanghaiState = {
+        claimingPlayerIndex: 0,
+        selectedNumber: null,
+        currentDarts: [],
+        placings: []
+    };
+
     document.getElementById('playerNameInput').value = '';
     document.getElementById('gameTypeDisplay').textContent = '';
     document.getElementById('setupPlayerList').innerHTML = '';
@@ -1884,8 +2312,10 @@ function resetGame() {
     // Reset to x01 mode
     document.getElementById('x01ModeBtn').classList.remove('secondary');
     document.getElementById('killerModeBtn').classList.add('secondary');
+    document.getElementById('shanghaiModeBtn').classList.add('secondary');
     document.getElementById('x01Setup').style.display = 'block';
     document.getElementById('killerSetup').style.display = 'none';
+    document.getElementById('shanghaiSetup').style.display = 'none';
 
     // Reset double-in button styles to default (straight in)
     document.getElementById('doubleInBtn').classList.add('secondary');
