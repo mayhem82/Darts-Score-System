@@ -551,12 +551,12 @@
 
     <div id="killerSetup" style="display: none;">
         <h2>Killer Mode</h2>
-        <p class="setup-note">Each player throws ONE dart with their non-dominant hand to claim a unique number. Claim in any order (lucky pick, first to arrive) — the match is then played in the order numbers were claimed. Hit OPPONENT numbers to give them strikes. Hit YOUR OWN number to remove strikes from yourself. First to 5 strikes is ELIMINATED. Last player standing wins.</p>
+        <p class="setup-note">Each player throws with their NON-DOMINANT hand until they land on a free number — however many darts it takes. That number is theirs. Claim in any order (lucky pick, first to arrive) — the match is then played in the order numbers were claimed. Hit OPPONENT numbers to give them strikes. Hit YOUR OWN number to remove strikes from yourself. First to 5 strikes is ELIMINATED. Last player standing wins.</p>
     </div>
 
     <div id="shanghaiSetup" style="display: none;">
         <h2>Shanghai Mode</h2>
-        <p class="setup-note">Each player throws ONE dart with their non-dominant hand to claim a number — that number is theirs for the WHOLE game, and it's the only non-dominant throw of the match. Claim in any order (lucky pick, first to arrive). The match is then played in the order numbers were claimed. Hit a SINGLE, a DOUBLE and a TRIPLE of your own number, in any order, to finish. First four to finish take First, Second, Third and Fourth.</p>
+        <p class="setup-note">Each player throws with their NON-DOMINANT hand until they land on a free number (1–20) — however many darts it takes. That number is theirs for the WHOLE game, and claiming is the only non-dominant throwing of the match. Claim in any order (lucky pick, first to arrive). The match is then played in the order numbers were claimed. Hit a SINGLE, a DOUBLE and a TRIPLE of your own number, in any order, to finish. First four to finish take First, Second, Third and Fourth.</p>
     </div>
 
     <h2>Add Players (Min 2, Max 12)</h2>
@@ -643,7 +643,7 @@
 <!-- Killer Setup Screen -->
 <div id="killerSetupScreen" class="screen">
     <h1>Killer — Claim Numbers</h1>
-    <p class="setup-note">One throw with the non-dominant hand claims your number. Claim in any order — the match is played in the order claimed.</p>
+    <p class="setup-note">Non-dominant hand until you land on a free number — however many darts it takes. Claim in any order — the match is played in the order claimed.</p>
 
     <div class="scoreboard" id="killerClaimBoard"></div>
 
@@ -705,7 +705,7 @@
 <!-- Shanghai Setup Screen -->
 <div id="shanghaiSetupScreen" class="screen">
     <h1>Shanghai — Claim Numbers</h1>
-    <p class="setup-note">One throw with the non-dominant hand claims your number (dominant hand for the rest of the match). Claim in any order — the match is played in the order claimed.</p>
+    <p class="setup-note">Non-dominant hand until you land on a free number — however many darts it takes (dominant hand for the rest of the match). Claim in any order — the match is played in the order claimed.</p>
 
     <div class="scoreboard" id="shanghaiClaimBoard"></div>
 
@@ -759,7 +759,7 @@
 
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a>
-    <span class="version">Bellbrook Darts Club Scoreboard · v1.6</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v1.7</span>
 </footer>
 
 <script>
@@ -1903,7 +1903,7 @@ function downloadHistory() {
     const winner = document.getElementById('winnerName').textContent;
 
     let content = `Bellbrook Darts Club Scoreboard - ${gameMode}\n`;
-    content += `Version: 1.6\n`;
+    content += `Version: 1.7\n`;
     content += `Date: ${date}\n`;
     content += `Winner: ${winner}\n`;
     content += `\n=== Players ===\n`;
