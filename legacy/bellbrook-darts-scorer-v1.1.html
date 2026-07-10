@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bellbrook Darts Club Scoreboard v1.1</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #1a1a1a;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(42, 127, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 20% 80%, rgba(76, 175, 80, 0.02) 0%, transparent 40%),
+                radial-gradient(circle at 80% 20%, rgba(211, 47, 47, 0.02) 0%, transparent 40%);
+            background-attachment: fixed;
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 15px;
+            -webkit-user-select: none;
+            user-select: none;
+            font-size: 18px;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        h1 {
+            text-align: center;
+            margin: 25px 0;
+            font-size: 32px;
+        }
+
+        h2 {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 24px;
+        }
+
+        button {
+            background: #2a7fff;
+            color: white;
+            border: none;
+            padding: 18px 24px;
+            font-size: 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            margin: 12px 0;
+            font-weight: 600;
+        }
+
+        button:active {
+            background: #1a5fd9;
+        }
+
+        button.secondary {
+            background: #444;
+        }
+
+        button.secondary:active {
+            background: #333;
+        }
+
+        button.danger {
+            background: #d32f2f;
+        }
+
+        button.danger:active {
+            background: #b71c1c;
+        }
+
+        button:disabled {
+            background: #333;
+            color: #666;
+        }
+
+        .game-select {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .game-select button {
+            flex: 1;
+        }
+
+        input {
+            width: 100%;
+            padding: 18px;
+            font-size: 20px;
+            border: 2px solid #444;
+            background: #2a2a2a;
+            color: white;
+            border-radius: 8px;
+            margin: 12px 0;
+        }
+
+        .player-list {
+            margin: 20px 0;
+        }
+
+        .player-item {
+            background: #2a2a2a;
+            padding: 16px;
+            margin: 10px 0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 20px;
+        }
+
+        .player-item button {
+            width: auto;
+            padding: 12px 20px;
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .scoreboard {
+            background: #2a2a2a;
+            background-image: 
+                repeating-conic-gradient(from 0deg at 50% 50%, 
+                    rgba(42, 127, 255, 0.02) 0deg 18deg, 
+                    transparent 18deg 36deg);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .player-score {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin: 5px 0;
+            background: #1a1a1a;
+            border-radius: 6px;
+            border-left: 4px solid transparent;
+        }
+
+        .player-score.current {
+            background: #2a4a2a;
+            border-left-color: #4caf50;
+        }
+
+        .player-score.current::before {
+            content: '▶ ';
+        }
+
+        .player-info {
+            flex: 1;
+        }
+
+        .player-name {
+            font-weight: 600;
+            font-size: 20px;
+        }
+
+        .player-avg {
+            font-size: 16px;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        .score-display {
+            font-size: 40px;
+            font-weight: 700;
+            color: #4caf50;
+        }
+
+        .dart-input {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .number-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin: 15px 0;
+        }
+
+        .number-btn {
+            aspect-ratio: 1;
+            padding: 0;
+            font-size: 24px;
+            font-weight: 600;
+            min-height: 60px;
+        }
+
+        .number-btn.selected {
+            background: #4caf50;
+        }
+
+        .multiplier-section {
+            margin: 20px 0;
+        }
+
+        .multiplier-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .multiplier-btn {
+            padding: 18px;
+            font-size: 20px;
+        }
+
+        .multiplier-btn.selected {
+            background: #ff9800;
+        }
+
+        .dart-display {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .dart-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .dart-row:last-child {
+            border-bottom: none;
+        }
+
+        .remaining-score {
+            text-align: center;
+            font-size: 64px;
+            font-weight: 700;
+            color: #4caf50;
+            margin: 25px 0;
+            text-shadow: 0 0 30px rgba(76, 175, 80, 0.4);
+            background: radial-gradient(circle at center, rgba(76, 175, 80, 0.05) 0%, transparent 70%);
+            padding: 25px;
+            border-radius: 12px;
+        }
+
+        .history {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            font-size: 18px;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .message {
+            background: #d32f2f;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .message.success {
+            background: #4caf50;
+        }
+
+        .winner-screen {
+            text-align: center;
+            padding: 40px 20px;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(76, 175, 80, 0.1) 0%, transparent 70%);
+        }
+
+        .winner-screen h1 {
+            font-size: 48px;
+            color: #4caf50;
+            margin: 35px 0;
+            text-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
+        }
+
+        .summary-screen {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .summary-box {
+            background: #2a2a2a;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .summary-box h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .summary-box .score {
+            font-size: 48px;
+            color: #4caf50;
+            font-weight: 700;
+            margin: 20px 0;
+        }
+
+        .label {
+            font-size: 18px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Setup Screen -->
+<div id="setupScreen" class="screen active">
+    <h1>BELLBROOK DARTS CLUB SCOREBOARD</h1>
+    
+    <h2>Select Game Mode</h2>
+    <div class="game-select">
+        <button id="x01ModeBtn" onclick="selectGameMode('x01')">x01</button>
+        <button id="killerModeBtn" class="secondary" onclick="selectGameMode('killer')">Killer</button>
+    </div>
+
+    <div id="x01Setup" style="display: block;">
+        <h2>Select Game Type</h2>
+        <div class="game-select">
+            <button onclick="selectGame(101)">101</button>
+            <button onclick="selectGame(201)">201</button>
+            <button onclick="selectGame(301)">301</button>
+        </div>
+
+        <div id="gameTypeDisplay" style="text-align: center; font-size: 24px; margin: 20px 0; color: #4caf50;"></div>
+
+        <h2>Starting Rule</h2>
+        <div class="game-select">
+            <button id="doubleInBtn" class="secondary" onclick="toggleDoubleIn(true)">Double In</button>
+            <button id="straightInBtn" onclick="toggleDoubleIn(false)">Straight In</button>
+        </div>
+    </div>
+
+    <div id="killerSetup" style="display: none;">
+        <h2>Killer Mode</h2>
+        <p style="text-align: center; color: #999; margin: 20px 0;">Each player throws to claim a unique number. Hit OPPONENT numbers to give them strikes. Hit YOUR OWN number to remove strikes from yourself. First to 5 strikes is ELIMINATED. Last player standing wins.</p>
+    </div>
+
+    <h2>Add Players (Min 2, Max 12)</h2>
+    <input type="text" id="playerNameInput" placeholder="Enter player name" onkeypress="if(event.key==='Enter') addPlayer()">
+    <button onclick="addPlayer()">Add Player</button>
+
+    <div class="player-list" id="setupPlayerList"></div>
+
+    <button onclick="startGame()" id="startGameBtn" disabled>Start Game</button>
+</div>
+
+<!-- Game Screen -->
+<div id="gameScreen" class="screen">
+    <h1 id="gameTitle">301</h1>
+    
+    <div class="scoreboard" id="scoreboard"></div>
+
+    <div class="remaining-score" id="remainingScore">301</div>
+
+    <div class="dart-input">
+        <h2>Enter Dart <span id="dartNumber">1</span></h2>
+        
+        <div class="label">Select Number</div>
+        <div class="number-grid" id="numberGrid"></div>
+
+        <div class="multiplier-section" id="multiplierSection" style="display: none;">
+            <div class="label">Select Multiplier</div>
+            <div class="multiplier-grid">
+                <button class="multiplier-btn" onclick="selectMultiplier(1)">Single</button>
+                <button class="multiplier-btn" onclick="selectMultiplier(2)">Double</button>
+                <button class="multiplier-btn" onclick="selectMultiplier(3)">Triple</button>
+            </div>
+        </div>
+
+        <button onclick="confirmDart()" id="confirmDartBtn" disabled>Confirm Dart</button>
+        <button class="secondary" onclick="undoLastDart()" id="undoDartBtn" disabled>Undo Last Dart</button>
+    </div>
+
+    <div class="dart-display" id="dartDisplay">
+        <div class="label">This Turn</div>
+    </div>
+
+    <button onclick="endTurn()" id="endTurnBtn">End Turn</button>
+
+    <button class="secondary" onclick="clearTurn()">Clear Turn</button>
+
+    <button class="danger" onclick="confirmReset()">Reset Game</button>
+
+    <div class="history" id="history"></div>
+</div>
+
+<!-- Turn Summary Screen -->
+<div id="summaryScreen" class="screen">
+    <div class="summary-screen">
+        <h1>Turn Complete</h1>
+        
+        <div class="summary-box">
+            <h2 id="summaryPlayer"></h2>
+            <div class="label">Scored</div>
+            <div class="score" id="summaryScored"></div>
+            <div class="label">New Total</div>
+            <div class="score" id="summaryTotal"></div>
+        </div>
+
+        <div id="bustMessage" class="message" style="display: none;"></div>
+
+        <button onclick="nextPlayer()">Next Player</button>
+    </div>
+</div>
+
+<!-- Winner Screen -->
+<div id="winnerScreen" class="screen">
+    <div class="winner-screen">
+        <h1 id="winnerName"></h1>
+        <h2>🎯 WINS! 🎯</h2>
+        
+        <div class="history" id="winnerHistory" style="max-height: 300px; margin: 20px 0;"></div>
+        
+        <button onclick="downloadHistory()">Download Game History</button>
+        <button onclick="newMatch()">Start New Match</button>
+    </div>
+</div>
+
+<!-- Killer Setup Screen -->
+<div id="killerSetupScreen" class="screen">
+    <h1>Killer - Claim Numbers</h1>
+    <p style="text-align: center; color: #999; margin: 20px;">Throw with non-dominant hand to claim your number</p>
+    
+    <div class="scoreboard" id="killerClaimBoard"></div>
+    
+    <div id="killerClaimSection">
+        <h2 id="killerClaimPlayer">Player's Turn</h2>
+        
+        <div class="number-grid" id="killerClaimGrid"></div>
+        
+        <button onclick="claimNumber()" id="claimNumberBtn" disabled>Claim Number</button>
+    </div>
+    
+    <button onclick="startKillerPlay()" id="startKillerPlayBtn" disabled>Start Game</button>
+</div>
+
+<!-- Killer Game Screen -->
+<div id="killerGameScreen" class="screen">
+    <h1>Killer</h1>
+    
+    <div class="scoreboard" id="killerScoreboard"></div>
+    
+    <div class="dart-input">
+        <h2 id="killerCurrentPlayer">Player's Turn</h2>
+        <div style="text-align: center; color: #999; margin: 10px 0;">
+            Dart <span id="killerDartNumber">1</span> of 3
+        </div>
+        
+        <div class="label">Select Number Hit</div>
+        <div class="number-grid" id="killerNumberGrid"></div>
+        
+        <div class="multiplier-section" id="killerMultiplierSection" style="display: none;">
+            <div class="label">Select Multiplier</div>
+            <div class="multiplier-grid">
+                <button class="multiplier-btn" onclick="selectKillerMultiplier(1)">Single</button>
+                <button class="multiplier-btn" onclick="selectKillerMultiplier(2)">Double</button>
+                <button class="multiplier-btn" onclick="selectKillerMultiplier(3)">Triple</button>
+            </div>
+        </div>
+        
+        <button onclick="confirmKillerHit()" id="confirmKillerBtn" disabled>Confirm Hit</button>
+        <button class="secondary" onclick="killerMiss()">Miss</button>
+        <button class="secondary" onclick="undoKillerDart()" id="undoKillerBtn" disabled>Undo Last Dart</button>
+    </div>
+    
+    <div class="dart-display" id="killerDartDisplay">
+        <div class="label">This Turn</div>
+    </div>
+    
+    <button onclick="endKillerTurn()">End Turn</button>
+    
+    <button class="secondary" onclick="clearKillerTurn()">Clear Turn</button>
+    
+    <button class="danger" onclick="confirmReset()">Reset Game</button>
+    
+    <div class="history" id="killerHistory"></div>
+</div>
+
+<script>
+let gameState = {
+    gameMode: 'x01',
+    gameType: null,
+    doubleIn: false,
+    hasStarted: [],
+    players: [],
+    currentPlayerIndex: 0,
+    currentDarts: [],
+    selectedNumber: null,
+    selectedMultiplier: 1,
+    history: [],
+    turnStartScore: null,
+    claimedNumbers: []
+};
+
+function selectGameMode(mode) {
+    gameState.gameMode = mode;
+    
+    // Update button styles
+    if (mode === 'x01') {
+        document.getElementById('x01ModeBtn').classList.remove('secondary');
+        document.getElementById('killerModeBtn').classList.add('secondary');
+        document.getElementById('x01Setup').style.display = 'block';
+        document.getElementById('killerSetup').style.display = 'none';
+    } else {
+        document.getElementById('x01ModeBtn').classList.add('secondary');
+        document.getElementById('killerModeBtn').classList.remove('secondary');
+        document.getElementById('x01Setup').style.display = 'none';
+        document.getElementById('killerSetup').style.display = 'block';
+        // For Killer, we don't need a game type selected
+        gameState.gameType = 'killer';
+    }
+    
+    checkStartButton();
+}
+
+function selectGame(type) {
+    gameState.gameType = type;
+    document.getElementById('gameTypeDisplay').textContent = `Selected: ${type}`;
+    checkStartButton();
+}
+
+function toggleDoubleIn(isDoubleIn) {
+    gameState.doubleIn = isDoubleIn;
+    
+    // Update button styles
+    if (isDoubleIn) {
+        document.getElementById('doubleInBtn').classList.remove('secondary');
+        document.getElementById('straightInBtn').classList.add('secondary');
+    } else {
+        document.getElementById('doubleInBtn').classList.add('secondary');
+        document.getElementById('straightInBtn').classList.remove('secondary');
+    }
+}
+
+function addPlayer() {
+    const input = document.getElementById('playerNameInput');
+    const name = input.value.trim();
+    
+    if (!name) return;
+    if (gameState.players.length >= 12) {
+        alert('Maximum 12 players');
+        return;
+    }
+
+    gameState.players.push({
+        name: name,
+        score: 0,
+        turns: 0,
+        totalScored: 0
+    });
+
+    renderSetupPlayers();
+    input.value = '';
+    checkStartButton();
+}
+
+function removePlayer(index) {
+    gameState.players.splice(index, 1);
+    renderSetupPlayers();
+    checkStartButton();
+}
+
+function renderSetupPlayers() {
+    const list = document.getElementById('setupPlayerList');
+    list.innerHTML = gameState.players.map((p, i) => `
+        <div class="player-item">
+            <span>${p.name}</span>
+            <button class="secondary" onclick="removePlayer(${i})">Remove</button>
+        </div>
+    `).join('');
+}
+
+function checkStartButton() {
+    const btn = document.getElementById('startGameBtn');
+    if (gameState.gameMode === 'x01') {
+        btn.disabled = !gameState.gameType || gameState.players.length < 2;
+    } else {
+        // Killer mode just needs 2+ players
+        btn.disabled = gameState.players.length < 2;
+    }
+}
+
+function startGame() {
+    if (gameState.gameMode === 'x01') {
+        startX01Game();
+    } else {
+        startKillerGame();
+    }
+}
+
+function startX01Game() {
+    gameState.players.forEach(p => {
+        p.score = gameState.gameType;
+        p.turns = 0;
+        p.totalScored = 0;
+    });
+    gameState.currentPlayerIndex = 0;
+    gameState.history = [];
+    gameState.hasStarted = gameState.players.map(() => false);
+    
+    showScreen('gameScreen');
+    renderNumberGrid();
+    startTurn();
+}
+
+function startKillerGame() {
+    // Initialize killer-specific player data
+    gameState.players.forEach(p => {
+        p.strikes = 0;
+        p.claimedNumber = null;
+        p.eliminated = false;
+    });
+    gameState.currentPlayerIndex = 0;
+    gameState.history = [];
+    gameState.claimedNumbers = [];
+    killerState.claimingPlayerIndex = 0;
+    killerState.selectedNumber = null;
+    
+    showScreen('killerSetupScreen');
+    
+    // Set first player name
+    document.getElementById('killerClaimPlayer').textContent = 
+        gameState.players[0].name + "'s Turn";
+    
+    // Show claim section
+    document.getElementById('killerClaimSection').style.display = 'block';
+    document.getElementById('startKillerPlayBtn').disabled = true;
+    
+    // Render boards
+    renderKillerClaimBoard();
+    renderKillerClaimGrid();
+}
+
+function renderNumberGrid() {
+    const grid = document.getElementById('numberGrid');
+    const numbers = [];
+    
+    for (let i = 1; i <= 20; i++) numbers.push(i);
+    
+    let html = numbers.map(n => `
+        <button class="number-btn" onclick="selectNumber(${n})">${n}</button>
+    `).join('');
+    
+    // Add special buttons: 25, 50, MISS, BUST
+    html += `<button class="number-btn" onclick="selectNumber(25)">25</button>`;
+    html += `<button class="number-btn" onclick="selectNumber(50)">50</button>`;
+    html += `<button class="number-btn secondary" onclick="selectMiss()">MISS</button>`;
+    html += `<button class="number-btn danger" onclick="selectBust()">BUST</button>`;
+    
+    grid.innerHTML = html;
+}
+
+function startTurn() {
+    const player = gameState.players[gameState.currentPlayerIndex];
+    gameState.currentDarts = [];
+    gameState.turnStartScore = player.score;
+    gameState.selectedNumber = null;
+    gameState.selectedMultiplier = 1;
+    
+    document.getElementById('gameTitle').textContent = gameState.gameType;
+    document.getElementById('dartNumber').textContent = '1';
+    document.getElementById('multiplierSection').style.display = 'none';
+    document.getElementById('confirmDartBtn').disabled = true;
+    document.getElementById('undoDartBtn').disabled = true;
+    
+    renderScoreboard();
+    renderDartDisplay();
+    updateRemainingScore();
+    
+    // Reset number grid
+    document.querySelectorAll('.number-btn').forEach(btn => {
+        btn.classList.remove('selected');
+        btn.disabled = false;
+    });
+}
+
+function undoLastDart() {
+    if (gameState.currentDarts.length === 0) return;
+    
+    // Remove last dart
+    const removedDart = gameState.currentDarts.pop();
+    
+    // If we removed a scoring dart and double-in is active, mark player as not started
+    if (gameState.doubleIn && removedDart.score > 0) {
+        const hasAnyScoring = gameState.currentDarts.some(d => d.score > 0);
+        if (!hasAnyScoring) {
+            gameState.hasStarted[gameState.currentPlayerIndex] = false;
+        }
+    }
+    
+    // Update dart number display
+    document.getElementById('dartNumber').textContent = (gameState.currentDarts.length + 1);
+    
+    // Re-enable number buttons
+    document.querySelectorAll('.number-btn').forEach(btn => {
+        btn.disabled = false;
+    });
+    
+    // Reset selection state
+    gameState.selectedNumber = null;
+    gameState.selectedMultiplier = 1;
+    document.getElementById('multiplierSection').style.display = 'none';
+    document.getElementById('confirmDartBtn').disabled = true;
+    
+    // Disable undo button if no darts left
+    if (gameState.currentDarts.length === 0) {
+        document.getElementById('undoDartBtn').disabled = true;
+    }
+    
+    // Re-render display
+    renderDartDisplay();
+    
+    // Clear number selection
+    document.querySelectorAll('.number-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    document.querySelectorAll('.multiplier-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+}
+
+function clearTurn() {
+    if (gameState.currentDarts.length === 0) return;
+    
+    if (confirm('Clear all darts for this turn?')) {
+        // Clear all darts
+        gameState.currentDarts = [];
+        
+        // Reset hasStarted if double-in is active
+        if (gameState.doubleIn) {
+            gameState.hasStarted[gameState.currentPlayerIndex] = false;
+        }
+        
+        // Reset UI
+        document.getElementById('dartNumber').textContent = '1';
+        gameState.selectedNumber = null;
+        gameState.selectedMultiplier = 1;
+        document.getElementById('multiplierSection').style.display = 'none';
+        document.getElementById('confirmDartBtn').disabled = true;
+        document.getElementById('undoDartBtn').disabled = true;
+        
+        // Re-enable all number buttons
+        document.querySelectorAll('.number-btn').forEach(btn => {
+            btn.classList.remove('selected');
+            btn.disabled = false;
+        });
+        
+        // Clear multiplier selection
+        document.querySelectorAll('.multiplier-btn').forEach(btn => {
+            btn.classList.remove('selected');
+        });
+        
+        // Re-render display
+        renderDartDisplay();
+    }
+}
+
+function clearTurn() {
+    // Clear all darts in current turn
+    gameState.currentDarts = [];
+    
+    // If double-in is active, mark player as not started
+    if (gameState.doubleIn) {
+        gameState.hasStarted[gameState.currentPlayerIndex] = false;
+    }
+    
+    // Reset dart number
+    document.getElementById('dartNumber').textContent = '1';
+    
+    // Re-enable all number buttons
+    document.querySelectorAll('.number-btn').forEach(btn => {
+        btn.disabled = false;
+        btn.classList.remove('selected');
+    });
+    
+    // Reset selection state
+    gameState.selectedNumber = null;
+    gameState.selectedMultiplier = 1;
+    document.getElementById('multiplierSection').style.display = 'none';
+    document.getElementById('confirmDartBtn').disabled = true;
+    document.getElementById('undoDartBtn').disabled = true;
+    
+    // Clear multiplier selection
+    document.querySelectorAll('.multiplier-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    
+    // Re-render display
+    renderDartDisplay();
+    updateRemainingScore();
+}
+
+function selectNumber(num) {
+    gameState.selectedNumber = num;
+    gameState.selectedMultiplier = 1;
+    
+    // Update number grid
+    document.querySelectorAll('.number-btn').forEach(btn => {
+        btn.classList.remove('selected');
+        if (parseInt(btn.textContent) === num) {
+            btn.classList.add('selected');
+        }
+    });
+    
+    // Show/hide multiplier section
+    const multiplierSection = document.getElementById('multiplierSection');
+    if (num === 25 || num === 50) {
+        multiplierSection.style.display = 'none';
+        document.getElementById('confirmDartBtn').disabled = false;
+    } else {
+        multiplierSection.style.display = 'block';
+        document.getElementById('confirmDartBtn').disabled = false;
+        
+        // Reset multiplier buttons
+        document.querySelectorAll('.multiplier-btn').forEach(btn => {
+            btn.classList.remove('selected');
+        });
+        document.querySelector('.multiplier-btn').classList.add('selected');
+    }
+}
+
+function selectBust() {
+    // Immediately bust the turn
+    const player = gameState.players[gameState.currentPlayerIndex];
+    player.turns += 1;
+    
+    gameState.history.unshift({
+        player: player.name,
+        scored: 0,
+        newScore: gameState.turnStartScore,
+        bust: true
+    });
+    
+    renderHistory();
+    showSummary(player.name, 0, gameState.turnStartScore, true, 'Bust selected');
+}
+
+function selectMiss() {
+    // Log a miss (0 score dart)
+    gameState.currentDarts.push({
+        number: 0,
+        multiplier: 0,
+        score: 0,
+        isDouble: false
+    });
+    
+    // Enable undo button
+    document.getElementById('undoDartBtn').disabled = false;
+    
+    renderDartDisplay();
+    
+    // If 3 darts, disable further input
+    if (gameState.currentDarts.length >= 3) {
+        document.getElementById('confirmDartBtn').disabled = true;
+        document.querySelectorAll('.number-btn').forEach(btn => btn.disabled = true);
+    } else {
+        // Reset for next dart
+        gameState.selectedNumber = null;
+        gameState.selectedMultiplier = 1;
+        document.getElementById('dartNumber').textContent = (gameState.currentDarts.length + 1);
+        document.getElementById('multiplierSection').style.display = 'none';
+        document.getElementById('confirmDartBtn').disabled = true;
+        
+        document.querySelectorAll('.number-btn').forEach(btn => {
+            btn.classList.remove('selected');
+            btn.disabled = false;
+        });
+        document.querySelectorAll('.multiplier-btn').forEach(btn => {
+            btn.classList.remove('selected');
+        });
+    }
+}
+
+function selectMultiplier(mult) {
+    gameState.selectedMultiplier = mult;
+    
+    document.querySelectorAll('.multiplier-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    event.target.classList.add('selected');
+}
+
+function confirmDart() {
+    const num = gameState.selectedNumber;
+    const mult = gameState.selectedMultiplier;
+    
+    if (num === null) return;
+    
+    // Validation
+    let score;
+    if (num === 25) {
+        score = 25;
+    } else if (num === 50) {
+        score = 50;
+    } else {
+        score = num * mult;
+        if (score > 60) {
+            alert('Invalid dart: score cannot exceed 60');
+            return;
+        }
+    }
+    
+    const isDouble = (num === 50) || (num !== 25 && mult === 2);
+    
+    // Check double-in rule for player's first scoring dart
+    const playerHasStarted = gameState.hasStarted[gameState.currentPlayerIndex];
+    if (gameState.doubleIn && !playerHasStarted && score > 0) {
+        if (!isDouble) {
+            alert('Must start with a Double (Double In rule active)');
+            return;
+        }
+        // Mark player as started
+        gameState.hasStarted[gameState.currentPlayerIndex] = true;
+    }
+    
+    gameState.currentDarts.push({
+        number: num,
+        multiplier: mult,
+        score: score,
+        isDouble: isDouble
+    });
+    
+    // Enable undo button
+    document.getElementById('undoDartBtn').disabled = false;
+    
+    renderDartDisplay();
+    
+    // Check for win
+    const player = gameState.players[gameState.currentPlayerIndex];
+    const turnTotal = gameState.currentDarts.reduce((sum, d) => sum + d.score, 0);
+    const newScore = gameState.turnStartScore - turnTotal;
+    
+    if (newScore === 0 && isDouble) {
+        // Winner!
+        player.totalScored += turnTotal;
+        player.turns += 1;
+        showWinner();
+        return;
+    }
+    
+    // If 3 darts or need to end turn
+    if (gameState.currentDarts.length >= 3) {
+        document.getElementById('confirmDartBtn').disabled = true;
+        document.querySelectorAll('.number-btn').forEach(btn => btn.disabled = true);
+    } else {
+        // Reset for next dart
+        gameState.selectedNumber = null;
+        gameState.selectedMultiplier = 1;
+        document.getElementById('dartNumber').textContent = (gameState.currentDarts.length + 1);
+        document.getElementById('multiplierSection').style.display = 'none';
+        document.getElementById('confirmDartBtn').disabled = true;
+        
+        document.querySelectorAll('.number-btn').forEach(btn => {
+            btn.classList.remove('selected');
+            btn.disabled = false;
+        });
+        document.querySelectorAll('.multiplier-btn').forEach(btn => {
+            btn.classList.remove('selected');
+        });
+    }
+}
+
+function renderDartDisplay() {
+    const display = document.getElementById('dartDisplay');
+    
+    let html = '<div class="label">This Turn</div>';
+    let runningTotal = 0;
+    
+    gameState.currentDarts.forEach((dart, i) => {
+        runningTotal += dart.score;
+        const remaining = gameState.turnStartScore - runningTotal;
+        
+        let dartText = '';
+        if (dart.number === 0) {
+            dartText = 'MISS';
+        } else if (dart.number === 25 || dart.number === 50) {
+            dartText = dart.number === 25 ? 'Single Bull (25)' : 'Double Bull (50)';
+        } else {
+            const multName = ['', 'Single', 'Double', 'Triple'][dart.multiplier];
+            dartText = `${multName} ${dart.number}`;
+        }
+        
+        html += `
+            <div class="dart-row">
+                <span>Dart ${i + 1}: ${dartText}</span>
+                <span>${dart.score} → ${remaining}</span>
+            </div>
+        `;
+    });
+    
+    display.innerHTML = html;
+    updateRemainingScore();
+}
+
+function updateRemainingScore() {
+    const player = gameState.players[gameState.currentPlayerIndex];
+    const turnTotal = gameState.currentDarts.reduce((sum, d) => sum + d.score, 0);
+    const remaining = gameState.turnStartScore - turnTotal;
+    document.getElementById('remainingScore').textContent = remaining;
+}
+
+function endTurn() {
+    const player = gameState.players[gameState.currentPlayerIndex];
+    const turnTotal = gameState.currentDarts.reduce((sum, d) => sum + d.score, 0);
+    const newScore = gameState.turnStartScore - turnTotal;
+    
+    let isBust = false;
+    let bustReason = '';
+    
+    // Check bust conditions
+    if (newScore < 0) {
+        isBust = true;
+        bustReason = 'Score went below 0';
+    } else if (newScore === 1) {
+        isBust = true;
+        bustReason = 'Score reached 1';
+    } else if (newScore === 0) {
+        const lastDart = gameState.currentDarts[gameState.currentDarts.length - 1];
+        if (!lastDart || !lastDart.isDouble) {
+            isBust = true;
+            bustReason = 'Must finish on a Double';
+        }
+    }
+    
+    // Build dart details string
+    let dartDetails = '';
+    if (gameState.currentDarts.length > 0) {
+        const dartStrings = gameState.currentDarts.map(d => {
+            if (d.number === 0) return 'MISS';
+            if (d.number === 25) return 'Bull 25';
+            if (d.number === 50) return 'Bull 50';
+            const multName = ['', 'S', 'D', 'T'][d.multiplier];
+            return `${multName}${d.number}`;
+        });
+        dartDetails = ` [${dartStrings.join(', ')}]`;
+    }
+    
+    if (isBust) {
+        // Bust - score returns to start of turn
+        player.turns += 1;
+        gameState.history.unshift({
+            player: player.name,
+            scored: 0,
+            newScore: gameState.turnStartScore,
+            bust: true,
+            details: dartDetails
+        });
+        
+        showSummary(player.name, 0, gameState.turnStartScore, true, bustReason);
+    } else {
+        // Valid turn
+        player.score = newScore;
+        player.totalScored += turnTotal;
+        player.turns += 1;
+        
+        gameState.history.unshift({
+            player: player.name,
+            scored: turnTotal,
+            newScore: newScore,
+            bust: false,
+            details: dartDetails
+        });
+        
+        showSummary(player.name, turnTotal, newScore, false, '');
+    }
+    
+    renderHistory();
+}
+
+function showSummary(playerName, scored, newTotal, isBust, bustReason) {
+    document.getElementById('summaryPlayer').textContent = playerName;
+    document.getElementById('summaryScored').textContent = scored;
+    document.getElementById('summaryTotal').textContent = newTotal;
+    
+    const bustMsg = document.getElementById('bustMessage');
+    if (isBust) {
+        bustMsg.textContent = `Bust — ${bustReason}. Score returns to previous total.`;
+        bustMsg.style.display = 'block';
+    } else {
+        bustMsg.style.display = 'none';
+    }
+    
+    showScreen('summaryScreen');
+}
+
+function nextPlayer() {
+    gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    showScreen('gameScreen');
+    startTurn();
+}
+
+function showWinner() {
+    const player = gameState.players[gameState.currentPlayerIndex];
+    document.getElementById('winnerName').textContent = player.name;
+    
+    // Show game history
+    const historyEl = document.getElementById('winnerHistory');
+    historyEl.innerHTML = '<div class="label">Game History</div>' + 
+        gameState.history.map(h => `
+            <div class="history-item">
+                ${h.player}: ${h.bust ? 'BUST' : `Scored ${h.scored} → ${h.newScore}`}${h.details || ''}
+            </div>
+        `).join('');
+    
+    showScreen('winnerScreen');
+}
+
+function newMatch() {
+    resetGame();
+}
+
+function renderScoreboard() {
+    const board = document.getElementById('scoreboard');
+    board.innerHTML = gameState.players.map((player, i) => {
+        const avg = player.turns > 0 ? (player.totalScored / player.turns).toFixed(1) : '0.0';
+        const isCurrent = i === gameState.currentPlayerIndex;
+        
+        return `
+            <div class="player-score ${isCurrent ? 'current' : ''}">
+                <div class="player-info">
+                    <div class="player-name">${player.name}</div>
+                    <div class="player-avg">Avg: ${avg}</div>
+                </div>
+                <div class="score-display">${player.score}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderHistory() {
+    const historyEl = document.getElementById('history');
+    historyEl.innerHTML = '<div class="label">Recent History</div>' + 
+        gameState.history.slice(0, 5).map(h => `
+            <div class="history-item">
+                ${h.player}: ${h.bust ? 'BUST' : `Scored ${h.scored} → ${h.newScore}`}${h.details || ''}
+            </div>
+        `).join('');
+}
+
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+}
+
+// ===== KILLER GAME FUNCTIONS =====
+
+let killerState = {
+    selectedNumber: null,
+    selectedMultiplier: 1,
+    claimingPlayerIndex: 0,
+    currentDarts: []
+};
+
+function renderKillerClaimBoard() {
+    const board = document.getElementById('killerClaimBoard');
+    board.innerHTML = gameState.players.map((p, i) => {
+        const claimed = p.claimedNumber !== null;
+        const numberText = claimed ? 
+            (p.claimedNumber === 25 ? 'Bull 25' : p.claimedNumber === 50 ? 'Bull 50' : p.claimedNumber) : 
+            'Not claimed';
+        
+        return `
+            <div class="player-score ${i === killerState.claimingPlayerIndex && !claimed ? 'current' : ''}">
+                <div class="player-info">
+                    <div class="player-name">${p.name}</div>
+                </div>
+                <div class="score-display" style="font-size: 24px;">${numberText}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderKillerClaimGrid() {
+    const grid = document.getElementById('killerClaimGrid');
+    const numbers = [];
+    
+    for (let i = 1; i <= 20; i++) numbers.push(i);
+    numbers.push(25, 50);
+    
+    grid.innerHTML = numbers.map(n => {
+        const claimed = gameState.claimedNumbers.includes(n);
+        const disabled = claimed ? 'disabled' : '';
+        const style = claimed ? 'opacity: 0.3;' : '';
+        return `<button class="number-btn" onclick="selectClaimNumber(${n})" ${disabled} style="${style}">${n}</button>`;
+    }).join('');
+}
+
+function selectClaimNumber(num) {
+    if (gameState.claimedNumbers.includes(num)) return;
+    
+    killerState.selectedNumber = num;
+    
+    document.querySelectorAll('#killerClaimGrid .number-btn').forEach(btn => {
+        btn.classList.remove('selected');
+        if (parseInt(btn.textContent) === num) {
+            btn.classList.add('selected');
+        }
+    });
+    
+    document.getElementById('claimNumberBtn').disabled = false;
+}
+
+function claimNumber() {
+    const num = killerState.selectedNumber;
+    if (num === null || gameState.claimedNumbers.includes(num)) return;
+    
+    // Assign number to current player
+    const player = gameState.players[killerState.claimingPlayerIndex];
+    player.claimedNumber = num;
+    gameState.claimedNumbers.push(num);
+    
+    // Move to next player
+    killerState.claimingPlayerIndex++;
+    killerState.selectedNumber = null;
+    document.getElementById('claimNumberBtn').disabled = true;
+    
+    // Check if all players have claimed
+    if (killerState.claimingPlayerIndex >= gameState.players.length) {
+        document.getElementById('startKillerPlayBtn').disabled = false;
+        document.getElementById('killerClaimSection').style.display = 'none';
+    } else {
+        document.getElementById('killerClaimPlayer').textContent = 
+            gameState.players[killerState.claimingPlayerIndex].name + "'s Turn";
+    }
+    
+    renderKillerClaimBoard();
+    renderKillerClaimGrid();
+}
+
+function startKillerPlay() {
+    gameState.currentPlayerIndex = 0;
+    showScreen('killerGameScreen');
+    startKillerTurn();
+}
+
+function renderKillerScoreboard() {
+    const board = document.getElementById('killerScoreboard');
+    board.innerHTML = gameState.players.map((player, i) => {
+        const isCurrent = i === gameState.currentPlayerIndex && !player.eliminated;
+        const numText = player.claimedNumber === 25 ? 'Bull 25' : 
+                       player.claimedNumber === 50 ? 'Bull 50' : 
+                       player.claimedNumber;
+        
+        const eliminatedStyle = player.eliminated ? 'opacity: 0.5; text-decoration: line-through;' : '';
+        const eliminatedText = player.eliminated ? ' - ELIMINATED' : '';
+        
+        return `
+            <div class="player-score ${isCurrent ? 'current' : ''}" style="${eliminatedStyle}">
+                <div class="player-info">
+                    <div class="player-name">${player.name} (${numText})${eliminatedText}</div>
+                    <div class="player-avg">Strikes: ${player.strikes}/5</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderKillerNumberGrid() {
+    const grid = document.getElementById('killerNumberGrid');
+    const numbers = [];
+    
+    for (let i = 1; i <= 20; i++) numbers.push(i);
+    numbers.push(25, 50);
+    
+    grid.innerHTML = numbers.map(n => 
+        `<button class="number-btn" onclick="selectKillerNumber(${n})">${n}</button>`
+    ).join('');
+}
+
+function startKillerTurn() {
+    // Skip eliminated players
+    while (gameState.players[gameState.currentPlayerIndex].eliminated) {
+        gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    }
+    
+    const player = gameState.players[gameState.currentPlayerIndex];
+    killerState.selectedNumber = null;
+    killerState.selectedMultiplier = 1;
+    killerState.currentDarts = [];
+    
+    document.getElementById('killerCurrentPlayer').textContent = player.name + "'s Turn";
+    document.getElementById('killerDartNumber').textContent = '1';
+    document.getElementById('killerMultiplierSection').style.display = 'none';
+    document.getElementById('confirmKillerBtn').disabled = true;
+    document.getElementById('undoKillerBtn').disabled = true;
+    
+    renderKillerScoreboard();
+    renderKillerNumberGrid();
+    renderKillerDartDisplay();
+}
+
+function selectKillerNumber(num) {
+    killerState.selectedNumber = num;
+    killerState.selectedMultiplier = 1;
+    
+    document.querySelectorAll('#killerNumberGrid .number-btn').forEach(btn => {
+        btn.classList.remove('selected');
+        if (parseInt(btn.textContent) === num) {
+            btn.classList.add('selected');
+        }
+    });
+    
+    const multiplierSection = document.getElementById('killerMultiplierSection');
+    if (num === 25 || num === 50) {
+        multiplierSection.style.display = 'none';
+        document.getElementById('confirmKillerBtn').disabled = false;
+    } else {
+        multiplierSection.style.display = 'block';
+        document.getElementById('confirmKillerBtn').disabled = false;
+        
+        document.querySelectorAll('#killerMultiplierSection .multiplier-btn').forEach(btn => {
+            btn.classList.remove('selected');
+        });
+        document.querySelector('#killerMultiplierSection .multiplier-btn').classList.add('selected');
+    }
+}
+
+function selectKillerMultiplier(mult) {
+    killerState.selectedMultiplier = mult;
+    
+    document.querySelectorAll('#killerMultiplierSection .multiplier-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    event.target.classList.add('selected');
+}
+
+function confirmKillerHit() {
+    const num = killerState.selectedNumber;
+    const mult = killerState.selectedMultiplier;
+    const player = gameState.players[gameState.currentPlayerIndex];
+    
+    if (num === null) return;
+    
+    const strikesToChange = (num === 25 || num === 50) ? 1 : mult;
+    
+    // Record this dart
+    killerState.currentDarts.push({
+        number: num,
+        multiplier: mult,
+        strikes: strikesToChange
+    });
+    
+    // Check if hitting own number (defense)
+    if (num === player.claimedNumber) {
+        const oldStrikes = player.strikes;
+        player.strikes = Math.max(0, player.strikes - strikesToChange);
+        const removed = oldStrikes - player.strikes;
+        
+        const numText = num === 25 ? 'Bull 25' : num === 50 ? 'Bull 50' : 
+                       (mult === 1 ? 'Single ' : mult === 2 ? 'Double ' : 'Triple ') + num;
+        
+        gameState.history.unshift({
+            player: player.name,
+            action: `Hit own ${numText} (-${removed} strike${removed !== 1 ? 's' : ''})`,
+            strikes: player.strikes
+        });
+    } else {
+        // Find which opponent owns this number
+        const targetPlayer = gameState.players.find(p => p.claimedNumber === num && !p.eliminated);
+        
+        if (targetPlayer) {
+            // Add strikes to opponent (attack)
+            targetPlayer.strikes += strikesToChange;
+            
+            const numText = num === 25 ? 'Bull 25' : num === 50 ? 'Bull 50' : 
+                           (mult === 1 ? 'Single ' : mult === 2 ? 'Double ' : 'Triple ') + num;
+            
+            gameState.history.unshift({
+                player: player.name,
+                action: `Hit ${targetPlayer.name}'s ${numText} (+${strikesToChange})`,
+                targetStrikes: targetPlayer.strikes
+            });
+            
+            // Check elimination
+            if (targetPlayer.strikes >= 5) {
+                targetPlayer.eliminated = true;
+                gameState.history.unshift({
+                    player: targetPlayer.name,
+                    action: 'ELIMINATED',
+                    strikes: targetPlayer.strikes
+                });
+                
+                // Check for winner
+                const activePlayers = gameState.players.filter(p => !p.eliminated);
+                if (activePlayers.length === 1) {
+                    showKillerWinner(activePlayers[0]);
+                    return;
+                }
+            }
+        } else {
+            // Hit unclaimed number or eliminated player's number
+            const numText = num === 25 ? 'Bull 25' : num === 50 ? 'Bull 50' : num;
+            gameState.history.unshift({
+                player: player.name,
+                action: `Hit ${numText} (nobody's number)`,
+                strikes: player.strikes
+            });
+        }
+    }
+    
+    renderKillerHistory();
+    renderKillerDartDisplay();
+    
+    // Check if 3 darts thrown
+    if (killerState.currentDarts.length >= 3) {
+        document.getElementById('confirmKillerBtn').disabled = true;
+        document.querySelectorAll('#killerNumberGrid .number-btn').forEach(btn => btn.disabled = true);
+    } else {
+        // Reset for next dart
+        killerState.selectedNumber = null;
+        killerState.selectedMultiplier = 1;
+        document.getElementById('killerDartNumber').textContent = (killerState.currentDarts.length + 1);
+        document.getElementById('killerMultiplierSection').style.display = 'none';
+        document.getElementById('confirmKillerBtn').disabled = true;
+        
+        document.querySelectorAll('#killerNumberGrid .number-btn').forEach(btn => {
+            btn.classList.remove('selected');
+            btn.disabled = false;
+        });
+        document.querySelectorAll('#killerMultiplierSection .multiplier-btn').forEach(btn => {
+            btn.classList.remove('selected');
+        });
+    }
+}
+
+function killerMiss() {
+    killerState.currentDarts.push({
+        number: 0,
+        multiplier: 0,
+        strikes: 0
+    });
+    
+    const player = gameState.players[gameState.currentPlayerIndex];
+    gameState.history.unshift({
+        player: player.name,
+        action: 'Miss',
+        strikes: player.strikes
+    });
+    
+    renderKillerHistory();
+    renderKillerDartDisplay();
+    
+    // Enable undo button
+    document.getElementById('undoKillerBtn').disabled = false;
+    
+    // Check if 3 darts thrown
+    if (killerState.currentDarts.length >= 3) {
+        document.getElementById('confirmKillerBtn').disabled = true;
+        document.querySelectorAll('#killerNumberGrid .number-btn').forEach(btn => btn.disabled = true);
+    } else {
+        document.getElementById('killerDartNumber').textContent = (killerState.currentDarts.length + 1);
+    }
+}
+
+function undoKillerDart() {
+    if (killerState.currentDarts.length === 0) return;
+    
+    const removedDart = killerState.currentDarts.pop();
+    const player = gameState.players[gameState.currentPlayerIndex];
+    
+    // Reverse the strike effect
+    if (removedDart.number !== 0) { // Not a miss
+        if (removedDart.number === player.claimedNumber) {
+            // Was defense - add strikes back
+            player.strikes += removedDart.strikes;
+        } else {
+            // Was attack - remove strikes from target
+            const targetPlayer = gameState.players.find(p => p.claimedNumber === removedDart.number);
+            if (targetPlayer) {
+                targetPlayer.strikes = Math.max(0, targetPlayer.strikes - removedDart.strikes);
+                // Uneliminate if they were eliminated
+                if (targetPlayer.eliminated && targetPlayer.strikes < 5) {
+                    targetPlayer.eliminated = false;
+                }
+            }
+        }
+    }
+    
+    // Remove last history entry
+    gameState.history.shift();
+    
+    // Update UI
+    document.getElementById('killerDartNumber').textContent = (killerState.currentDarts.length + 1);
+    
+    // Re-enable number buttons
+    document.querySelectorAll('#killerNumberGrid .number-btn').forEach(btn => {
+        btn.disabled = false;
+    });
+    
+    // Reset selection state
+    killerState.selectedNumber = null;
+    killerState.selectedMultiplier = 1;
+    document.getElementById('killerMultiplierSection').style.display = 'none';
+    document.getElementById('confirmKillerBtn').disabled = true;
+    
+    // Disable undo button if no darts left
+    if (killerState.currentDarts.length === 0) {
+        document.getElementById('undoKillerBtn').disabled = true;
+    }
+    
+    // Re-render displays
+    renderKillerDartDisplay();
+    renderKillerScoreboard();
+    renderKillerHistory();
+    
+    // Clear number selection
+    document.querySelectorAll('#killerNumberGrid .number-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    document.querySelectorAll('#killerMultiplierSection .multiplier-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+}
+
+function endKillerTurn() {
+    gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    startKillerTurn();
+}
+
+function clearKillerTurn() {
+    if (killerState.currentDarts.length === 0) return;
+    
+    if (confirm('Clear all darts for this turn? All strikes gained/lost this turn will be reversed.')) {
+        // Reverse all strikes from this turn
+        killerState.currentDarts.forEach(dart => {
+            if (dart.number === 0) return; // Skip misses
+            
+            const player = gameState.players[gameState.currentPlayerIndex];
+            
+            // Find which player this dart affected
+            if (dart.number === player.claimedNumber) {
+                // Was defense - add strikes back
+                player.strikes += dart.strikes;
+            } else {
+                // Was attack - remove strikes from target
+                const targetPlayer = gameState.players.find(p => p.claimedNumber === dart.number);
+                if (targetPlayer) {
+                    targetPlayer.strikes = Math.max(0, targetPlayer.strikes - dart.strikes);
+                    // Uneliminate if they were eliminated this turn
+                    if (targetPlayer.eliminated && targetPlayer.strikes < 5) {
+                        targetPlayer.eliminated = false;
+                    }
+                }
+            }
+        });
+        
+        // Clear darts and reset UI
+        killerState.currentDarts = [];
+        killerState.selectedNumber = null;
+        killerState.selectedMultiplier = 1;
+        
+        document.getElementById('killerDartNumber').textContent = '1';
+        document.getElementById('killerMultiplierSection').style.display = 'none';
+        document.getElementById('confirmKillerBtn').disabled = true;
+        
+        document.querySelectorAll('#killerNumberGrid .number-btn').forEach(btn => {
+            btn.classList.remove('selected');
+            btn.disabled = false;
+        });
+        
+        document.querySelectorAll('#killerMultiplierSection .multiplier-btn').forEach(btn => {
+            btn.classList.remove('selected');
+        });
+        
+        renderKillerDartDisplay();
+        renderKillerScoreboard();
+    }
+}
+
+function renderKillerDartDisplay() {
+    const display = document.getElementById('killerDartDisplay');
+    
+    let html = '<div class="label">This Turn</div>';
+    
+    killerState.currentDarts.forEach((dart, i) => {
+        let dartText = '';
+        if (dart.number === 0) {
+            dartText = 'MISS';
+        } else if (dart.number === 25 || dart.number === 50) {
+            dartText = dart.number === 25 ? 'Bull 25' : 'Bull 50';
+        } else {
+            const multName = ['', 'Single', 'Double', 'Triple'][dart.multiplier];
+            dartText = `${multName} ${dart.number}`;
+        }
+        
+        html += `
+            <div class="dart-row">
+                <span>Dart ${i + 1}: ${dartText}</span>
+            </div>
+        `;
+    });
+    
+    display.innerHTML = html;
+}
+
+function renderKillerHistory() {
+    const historyEl = document.getElementById('killerHistory');
+    historyEl.innerHTML = '<div class="label">Recent History</div>' + 
+        gameState.history.slice(0, 8).map(h => `
+            <div class="history-item">
+                ${h.player}: ${h.action}
+            </div>
+        `).join('');
+}
+
+function showKillerWinner(player) {
+    document.getElementById('winnerName').textContent = player.name;
+    
+    // Show game history
+    const historyEl = document.getElementById('winnerHistory');
+    historyEl.innerHTML = '<div class="label">Game History</div>' + 
+        gameState.history.map(h => `
+            <div class="history-item">
+                ${h.action}
+            </div>
+        `).join('');
+    
+    showScreen('winnerScreen');
+}
+
+function downloadHistory() {
+    const gameMode = gameState.gameMode === 'x01' ? `${gameState.gameType}` : 'Killer';
+    const date = new Date().toISOString().split('T')[0];
+    const winner = document.getElementById('winnerName').textContent;
+    
+    let content = `Bellbrook Darts Club Scoreboard - ${gameMode}\n`;
+    content += `Version: 1.1\n`;
+    content += `Date: ${date}\n`;
+    content += `Winner: ${winner}\n`;
+    content += `\n=== Players ===\n`;
+    
+    gameState.players.forEach(p => {
+        if (gameState.gameMode === 'x01') {
+            const avg = p.turns > 0 ? (p.totalScored / p.turns).toFixed(1) : '0.0';
+            content += `${p.name} - Final Score: ${p.score}, Average: ${avg}\n`;
+        } else {
+            const status = p.eliminated ? 'ELIMINATED' : 'Active';
+            content += `${p.name} (${p.claimedNumber}) - Strikes: ${p.strikes}/5, Status: ${status}\n`;
+        }
+    });
+    
+    content += `\n=== Game History ===\n`;
+    gameState.history.reverse().forEach((h, i) => {
+        if (gameState.gameMode === 'x01') {
+            content += `${i + 1}. ${h.player}: ${h.bust ? 'BUST' : `Scored ${h.scored} → ${h.newScore}`}${h.details || ''}\n`;
+        } else {
+            content += `${i + 1}. ${h.action}\n`;
+        }
+    });
+    
+    // Create download
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bellbrook-darts-history-${gameMode}-${date}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// ===== END KILLER GAME FUNCTIONS =====
+
+function confirmReset() {
+    if (confirm('Are you sure you want to reset the game? All progress will be lost.')) {
+        resetGame();
+    }
+}
+
+function resetGame() {
+    gameState = {
+        gameMode: 'x01',
+        gameType: null,
+        doubleIn: false,
+        hasStarted: [],
+        players: [],
+        currentPlayerIndex: 0,
+        currentDarts: [],
+        selectedNumber: null,
+        selectedMultiplier: 1,
+        history: [],
+        turnStartScore: null,
+        claimedNumbers: []
+    };
+    
+    killerState = {
+        selectedNumber: null,
+        selectedMultiplier: 1,
+        claimingPlayerIndex: 0,
+        currentDarts: []
+    };
+    
+    document.getElementById('playerNameInput').value = '';
+    document.getElementById('gameTypeDisplay').textContent = '';
+    document.getElementById('setupPlayerList').innerHTML = '';
+    
+    // Reset to x01 mode
+    document.getElementById('x01ModeBtn').classList.remove('secondary');
+    document.getElementById('killerModeBtn').classList.add('secondary');
+    document.getElementById('x01Setup').style.display = 'block';
+    document.getElementById('killerSetup').style.display = 'none';
+    
+    // Reset double-in button styles to default (straight in)
+    document.getElementById('doubleInBtn').classList.add('secondary');
+    document.getElementById('straightInBtn').classList.remove('secondary');
+    
+    checkStartButton();
+    
+    showScreen('setupScreen');
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House Rules &amp; Code of Conduct — Bellbrook Darts Club</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --timber: #17120d;
+            --walnut: #262019;
+            --walnut-deep: #1d1812;
+            --chalk: #ede3cc;
+            --chalk-dim: #b9ad92;
+            --brass: #c9a13b;
+            --brass-deep: #a37f24;
+            --board-red: #b23a2e;
+            --board-green: #2f6e4f;
+            --board-green-deep: #24543d;
+            --display: 'Oswald', 'Arial Narrow', system-ui, sans-serif;
+            --body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--body);
+            background: var(--timber);
+            background-image:
+                radial-gradient(ellipse at 50% -10%, rgba(201, 161, 59, 0.08) 0%, transparent 55%),
+                radial-gradient(circle at 15% 90%, rgba(47, 110, 79, 0.05) 0%, transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(178, 58, 46, 0.05) 0%, transparent 45%);
+            background-attachment: fixed;
+            color: var(--chalk);
+            min-height: 100vh;
+            padding: 15px;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        .club-header {
+            text-align: center;
+            padding: 18px 10px 16px;
+            margin: 0 auto 10px;
+            border-bottom: 3px double var(--brass);
+            max-width: 620px;
+        }
+
+        .club-header .club-mark {
+            font-size: 30px;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .club-header .club-name {
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 30px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .club-header .club-sub {
+            font-family: var(--display);
+            font-weight: 500;
+            font-size: 14px;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+            color: var(--brass);
+            margin-top: 6px;
+        }
+
+        main {
+            max-width: 620px;
+            margin: 0 auto;
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin: 26px 0 10px;
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 32px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            text-wrap: balance;
+        }
+
+        .intro {
+            text-align: center;
+            color: var(--chalk-dim);
+            max-width: 46ch;
+            margin: 0 auto 10px;
+        }
+
+        section {
+            background: var(--walnut);
+            border: 1px solid rgba(201, 161, 59, 0.3);
+            border-radius: 6px;
+            padding: 22px;
+            margin: 22px 0;
+        }
+
+        h2 {
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 22px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--brass);
+            border-bottom: 1px solid rgba(201, 161, 59, 0.35);
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+        }
+
+        h3 {
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 17px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin: 20px 0 8px;
+        }
+
+        p {
+            margin: 10px 0;
+        }
+
+        ul, ol {
+            margin: 10px 0 10px 22px;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        li::marker {
+            color: var(--brass);
+        }
+
+        .rule-tag {
+            display: inline-block;
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            background: var(--board-green-deep);
+            border: 1px solid var(--board-green);
+            color: var(--chalk);
+            border-radius: 3px;
+            padding: 2px 8px;
+            margin-right: 6px;
+        }
+
+        .rule-tag.red {
+            background: #6e241c;
+            border-color: var(--board-red);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        th {
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--chalk-dim);
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 2px solid rgba(201, 161, 59, 0.4);
+        }
+
+        td {
+            padding: 9px 10px;
+            border-bottom: 1px solid rgba(201, 161, 59, 0.15);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .conduct-list li {
+            margin: 12px 0;
+        }
+
+        .conduct-list strong {
+            color: var(--brass);
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 18px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #1c1608;
+            background: var(--brass);
+            border-bottom: 3px solid var(--brass-deep);
+            border-radius: 6px;
+            padding: 16px;
+            margin: 26px 0 10px;
+            text-decoration: none;
+        }
+
+        .back-link:active {
+            background: var(--brass-deep);
+        }
+
+        .club-footer {
+            text-align: center;
+            max-width: 620px;
+            margin: 20px auto 10px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(201, 161, 59, 0.35);
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            color: var(--chalk-dim);
+        }
+    </style>
+</head>
+<body>
+
+<header class="club-header">
+    <div class="club-mark">🎯</div>
+    <div class="club-name">Bellbrook Darts Club</div>
+    <div class="club-sub">Bellbrook Hotel · Macleay Valley</div>
+</header>
+
+<main>
+
+<h1>House Rules &amp; Code of Conduct</h1>
+<p class="intro">The rules below are the rules the club scoreboard enforces. The scorer enters each dart as thrown; the board does the arithmetic.</p>
+
+<section>
+    <h2>General Play</h2>
+    <ul>
+        <li>Each turn is <strong>three darts</strong>, thrown in order. A dart that misses the board is entered as a <strong>Miss</strong>.</li>
+        <li>Games need a minimum of <strong>2 players</strong> and take a maximum of <strong>12</strong>.</li>
+        <li>Playing order is the order players are added to the board before the game starts.</li>
+        <li>The scorer may <strong>undo the last dart</strong> or <strong>clear the whole turn</strong> if a dart was entered wrong — fix it before the turn is ended.</li>
+        <li>The scoreboard's record is the record. Game history can be downloaded at the end of every match.</li>
+    </ul>
+</section>
+
+<section>
+    <h2>x01 — 101 / 201 / 301</h2>
+    <p>Every player starts on the chosen total (101, 201 or 301) and races to exactly zero.</p>
+
+    <h3>Starting rule</h3>
+    <ul>
+        <li><span class="rule-tag">Straight In</span> Default. Every dart counts from the first throw.</li>
+        <li><span class="rule-tag">Double In</span> If selected before the game, a player's score doesn't start counting until they hit a <strong>double</strong> (any double, or the 50 bull).</li>
+    </ul>
+
+    <h3>Finishing</h3>
+    <ul>
+        <li>You must finish <strong>exactly on zero</strong>, and the dart that takes you to zero must be a <strong>double</strong>. The inner bull (50) counts as a double; the outer bull (25) does not.</li>
+    </ul>
+
+    <h3>Busts</h3>
+    <p>A turn is a bust — and the score goes back to what it was at the start of the turn — if any of these happen:</p>
+    <ul>
+        <li><span class="rule-tag red">Below zero</span> The turn takes the score under 0.</li>
+        <li><span class="rule-tag red">Score of 1</span> The turn leaves the score on exactly 1 (no double can finish from 1).</li>
+        <li><span class="rule-tag red">No double</span> The score reaches 0 but the final dart wasn't a double.</li>
+    </ul>
+
+    <h3>Scoring reference</h3>
+    <table>
+        <tr><th>Hit</th><th>Scores</th></tr>
+        <tr><td>Single 1–20</td><td>Face value</td></tr>
+        <tr><td>Double 1–20</td><td>Twice face value</td></tr>
+        <tr><td>Triple 1–20</td><td>Three times face value</td></tr>
+        <tr><td>Outer bull</td><td>25 (not a double)</td></tr>
+        <tr><td>Inner bull</td><td>50 (counts as a double)</td></tr>
+    </table>
+    <p>Averages shown on the board are points scored per three-dart turn.</p>
+</section>
+
+<section>
+    <h2>Killer</h2>
+    <ol>
+        <li><strong>Claim a number.</strong> Before play starts, each player throws with their <strong>non-dominant hand</strong> to claim a number. Every player's number is unique — numbers 1–20 and both bulls are up for grabs, first in first served.</li>
+        <li><strong>Attack.</strong> Hitting an <strong>opponent's</strong> number gives that opponent strikes: a single is 1 strike, a double is 2, a triple is 3. Either bull is 1 strike.</li>
+        <li><strong>Defend.</strong> Hitting your <strong>own</strong> number removes that many strikes from yourself (never below zero).</li>
+        <li><strong>Elimination.</strong> A player who reaches <strong>5 strikes</strong> is eliminated. Hits on an eliminated player's number count for nothing.</li>
+        <li><strong>Winning.</strong> Last player standing wins.</li>
+    </ol>
+</section>
+
+<section>
+    <h2>Code of Conduct</h2>
+    <p>We play in the front bar of the Bellbrook Hotel. We're guests there, and the club only works if everyone can enjoy the night.</p>
+    <ul class="conduct-list">
+        <li><strong>Respect the pub.</strong> Look after the board, the oche and the furniture. Treat hotel staff and other patrons with courtesy — they were here first.</li>
+        <li><strong>Respect the throw.</strong> Stand clear and stay quiet while a player is at the line. No coaching, sledging or movement in their eyeline mid-throw. Banter belongs between turns.</li>
+        <li><strong>The scorer's word is final.</strong> Query a score before the turn is ended, not three rounds later. Genuine disputes are settled by the players on the night, with a majority of those present having the final say.</li>
+        <li><strong>Play what you hit.</strong> Call your darts honestly. Nobody's here for sharpshooting trophies — a club that trusts its scorers doesn't need an umpire.</li>
+        <li><strong>Win and lose the same way.</strong> Shake hands (or tap knuckles) after every game. Celebrate wins without rubbing them in; cop losses without blaming the board, the lighting or the beer.</li>
+        <li><strong>Drink sensibly.</strong> It's a pub game, not a drinking game. Anyone too far gone to throw safely sits out — the darts are sharp and the walls have suffered enough.</li>
+        <li><strong>Everyone gets a game.</strong> New players, visitors and juniors (with a parent or guardian) are always welcome, and nobody gets left off the board on a club night.</li>
+        <li><strong>Leave it better.</strong> Darts pulled, board straightened, glasses back to the bar at the end of the night.</li>
+    </ul>
+    <p>Repeated or serious breaches are a matter for the club members present on the night, and the hotel's own house rules always take precedence.</p>
+</section>
+
+<a class="back-link" href="index.html">← Back to the Scoreboard</a>
+
+</main>
+
+<footer class="club-footer">
+    BELLBROOK DARTS CLUB · SCOREBOARD v1.2
+</footer>
+
+</body>
+</html>
