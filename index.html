@@ -530,6 +530,9 @@
     </div>
 
     <div id="x01Setup" style="display: block;">
+        <h2>x01 Mode</h2>
+        <p class="setup-note">Everyone starts on 101, 201 or 301 and races to EXACTLY zero. Three darts a turn. Straight In means every dart counts from the first throw; Double In means your scoring doesn't start until you hit a double. You must FINISH on a double that lands you exactly on zero (the 50 bull counts). Go below zero, land on 1, or reach zero without a double and the turn is a BUST — your score goes back to where it started.</p>
+
         <h2>Select Game Type</h2>
         <div class="game-select">
             <button onclick="selectGame(101)">101</button>
@@ -548,7 +551,7 @@
 
     <div id="killerSetup" style="display: none;">
         <h2>Killer Mode</h2>
-        <p class="setup-note">Each player throws to claim a unique number. Hit OPPONENT numbers to give them strikes. Hit YOUR OWN number to remove strikes from yourself. First to 5 strikes is ELIMINATED. Last player standing wins.</p>
+        <p class="setup-note">Each player throws ONE dart with their non-dominant hand to claim a unique number. Claim in any order (lucky pick, first to arrive) — the match is then played in the order numbers were claimed. Hit OPPONENT numbers to give them strikes. Hit YOUR OWN number to remove strikes from yourself. First to 5 strikes is ELIMINATED. Last player standing wins.</p>
     </div>
 
     <div id="shanghaiSetup" style="display: none;">
@@ -640,13 +643,15 @@
 <!-- Killer Setup Screen -->
 <div id="killerSetupScreen" class="screen">
     <h1>Killer — Claim Numbers</h1>
-    <p class="setup-note">Throw with non-dominant hand to claim your number</p>
+    <p class="setup-note">One throw with the non-dominant hand claims your number. Claim in any order — the match is played in the order claimed.</p>
 
     <div class="scoreboard" id="killerClaimBoard"></div>
 
     <div id="killerClaimSection">
-        <h2 id="killerClaimPlayer">Player's Turn</h2>
+        <h2>Who's Claiming?</h2>
+        <div class="game-select" style="flex-wrap: wrap;" id="killerPlayerPick"></div>
 
+        <h2>Their Number</h2>
         <div class="number-grid" id="killerClaimGrid"></div>
 
         <button onclick="claimNumber()" id="claimNumberBtn" disabled>Claim Number</button>
@@ -754,7 +759,7 @@
 
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a>
-    <span class="version">Bellbrook Darts Club Scoreboard · v1.5</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v1.6</span>
 </footer>
 
 <script>
@@ -894,14 +899,11 @@ function startKillerGame() {
     gameState.currentPlayerIndex = 0;
     gameState.history = [];
     gameState.claimedNumbers = [];
-    killerState.claimingPlayerIndex = 0;
+    killerState.selectedPlayerIndex = null;
     killerState.selectedNumber = null;
+    killerState.claimOrder = [];
 
     showScreen('killerSetupScreen');
-
-    // Set first player name
-    document.getElementById('killerClaimPlayer').textContent =
-        gameState.players[0].name + "'s Turn";
 
     // Show claim section
     document.getElementById('killerClaimSection').style.display = 'block';
@@ -909,6 +911,7 @@ function startKillerGame() {
 
     // Render boards
     renderKillerClaimBoard();
+    renderKillerPlayerPick();
     renderKillerClaimGrid();
 }
 
@@ -1392,27 +1395,55 @@ function showScreen(screenId) {
 let killerState = {
     selectedNumber: null,
     selectedMultiplier: 1,
-    claimingPlayerIndex: 0,
+    selectedPlayerIndex: null,
+    claimOrder: [],
     currentDarts: []
 };
 
 function renderKillerClaimBoard() {
     const board = document.getElementById('killerClaimBoard');
-    board.innerHTML = gameState.players.map((p, i) => {
-        const claimed = p.claimedNumber !== null;
-        const numberText = claimed ?
-            (p.claimedNumber === 25 ? 'Bull 25' : p.claimedNumber === 50 ? 'Bull 50' : p.claimedNumber) :
-            'Not claimed';
+    // Claimed players first, in claim (= playing) order, then the rest
+    const claimed = killerState.claimOrder;
+    const unclaimed = gameState.players.filter(p => p.claimedNumber === null);
 
-        return `
-            <div class="player-score ${i === killerState.claimingPlayerIndex && !claimed ? 'current' : ''}">
-                <div class="player-info">
-                    <div class="player-name">${p.name}</div>
-                </div>
-                <div class="score-display" style="font-size: 24px;">${numberText}</div>
+    const numText = n => n === 25 ? 'Bull 25' : n === 50 ? 'Bull 50' : n;
+
+    board.innerHTML = claimed.map((p, i) => `
+        <div class="player-score">
+            <div class="player-info">
+                <div class="player-name">${p.name}</div>
+                <div class="player-avg">${shanghaiThrowOrderLabel(i + 1)}</div>
             </div>
-        `;
+            <div class="score-display" style="font-size: 24px;">${numText(p.claimedNumber)}</div>
+        </div>
+    `).join('') + unclaimed.map(p => `
+        <div class="player-score">
+            <div class="player-info">
+                <div class="player-name">${p.name}</div>
+            </div>
+            <div class="score-display" style="font-size: 18px; color: #b9ad92;">Not claimed</div>
+        </div>
+    `).join('');
+}
+
+function renderKillerPlayerPick() {
+    const pick = document.getElementById('killerPlayerPick');
+    pick.innerHTML = gameState.players.map((p, i) => {
+        if (p.claimedNumber !== null) return '';
+        const isSelected = i === killerState.selectedPlayerIndex;
+        return `<button class="${isSelected ? '' : 'secondary'}" style="min-width: 40%;" onclick="selectKillerClaimPlayer(${i})">${p.name}</button>`;
     }).join('');
+}
+
+function selectKillerClaimPlayer(index) {
+    killerState.selectedPlayerIndex = index;
+    renderKillerPlayerPick();
+    updateKillerClaimButton();
+}
+
+function updateKillerClaimButton() {
+    document.getElementById('claimNumberBtn').disabled =
+        killerState.selectedPlayerIndex === null || killerState.selectedNumber === null;
 }
 
 function renderKillerClaimGrid() {
@@ -1442,37 +1473,39 @@ function selectClaimNumber(num) {
         }
     });
 
-    document.getElementById('claimNumberBtn').disabled = false;
+    updateKillerClaimButton();
 }
 
 function claimNumber() {
     const num = killerState.selectedNumber;
-    if (num === null || gameState.claimedNumbers.includes(num)) return;
+    const playerIndex = killerState.selectedPlayerIndex;
+    if (num === null || playerIndex === null || gameState.claimedNumbers.includes(num)) return;
 
-    // Assign number to current player
-    const player = gameState.players[killerState.claimingPlayerIndex];
+    const player = gameState.players[playerIndex];
+    if (player.claimedNumber !== null) return;
+
     player.claimedNumber = num;
     gameState.claimedNumbers.push(num);
+    killerState.claimOrder.push(player);
 
-    // Move to next player
-    killerState.claimingPlayerIndex++;
+    killerState.selectedPlayerIndex = null;
     killerState.selectedNumber = null;
     document.getElementById('claimNumberBtn').disabled = true;
 
     // Check if all players have claimed
-    if (killerState.claimingPlayerIndex >= gameState.players.length) {
+    if (killerState.claimOrder.length >= gameState.players.length) {
         document.getElementById('startKillerPlayBtn').disabled = false;
         document.getElementById('killerClaimSection').style.display = 'none';
-    } else {
-        document.getElementById('killerClaimPlayer').textContent =
-            gameState.players[killerState.claimingPlayerIndex].name + "'s Turn";
     }
 
     renderKillerClaimBoard();
+    renderKillerPlayerPick();
     renderKillerClaimGrid();
 }
 
 function startKillerPlay() {
+    // Match is played in the order numbers were claimed
+    gameState.players = killerState.claimOrder.slice();
     gameState.currentPlayerIndex = 0;
     showScreen('killerGameScreen');
     startKillerTurn();
@@ -1870,7 +1903,7 @@ function downloadHistory() {
     const winner = document.getElementById('winnerName').textContent;
 
     let content = `Bellbrook Darts Club Scoreboard - ${gameMode}\n`;
-    content += `Version: 1.5\n`;
+    content += `Version: 1.6\n`;
     content += `Date: ${date}\n`;
     content += `Winner: ${winner}\n`;
     content += `\n=== Players ===\n`;
@@ -2333,7 +2366,8 @@ function resetGame() {
     killerState = {
         selectedNumber: null,
         selectedMultiplier: 1,
-        claimingPlayerIndex: 0,
+        selectedPlayerIndex: null,
+        claimOrder: [],
         currentDarts: []
     };
 
