@@ -43,7 +43,7 @@
             padding: 15px;
             -webkit-user-select: none;
             user-select: none;
-            font-size: 18px;
+            font-size: 20px;
         }
 
         .club-header {
@@ -72,7 +72,7 @@
         .club-header .club-sub {
             font-family: var(--display);
             font-weight: 500;
-            font-size: 14px;
+            font-size: 15px;
             letter-spacing: 0.28em;
             text-transform: uppercase;
             color: var(--brass);
@@ -90,7 +90,7 @@
             margin: 30px auto 10px;
             padding-top: 16px;
             border-top: 1px solid rgba(201, 161, 59, 0.35);
-            font-size: 15px;
+            font-size: 17px;
             color: var(--chalk-dim);
         }
 
@@ -101,7 +101,7 @@
             font-weight: 600;
             letter-spacing: 0.08em;
             text-transform: uppercase;
-            font-size: 15px;
+            font-size: 17px;
         }
 
         .club-footer a:active {
@@ -111,7 +111,7 @@
         .club-footer .version {
             display: block;
             margin-top: 8px;
-            font-size: 12px;
+            font-size: 14px;
             letter-spacing: 0.1em;
         }
 
@@ -245,7 +245,7 @@
             width: auto;
             padding: 12px 20px;
             margin: 0;
-            font-size: 16px;
+            font-size: 18px;
         }
 
         .scoreboard {
@@ -287,7 +287,7 @@
         }
 
         .player-avg {
-            font-size: 15px;
+            font-size: 17px;
             color: var(--chalk-dim);
             margin-top: 4px;
         }
@@ -341,14 +341,14 @@
         }
 
         .number-btn.secondary {
-            font-size: 16px;
+            font-size: 17px;
         }
 
         .number-btn.danger {
             background: var(--board-red);
             border-color: var(--board-red-deep);
             border-bottom-color: var(--board-red-deep);
-            font-size: 16px;
+            font-size: 17px;
         }
 
         .multiplier-section {
@@ -428,7 +428,7 @@
         .history-item {
             padding: 10px;
             border-bottom: 1px solid rgba(201, 161, 59, 0.15);
-            font-size: 17px;
+            font-size: 19px;
         }
 
         .history-item:last-child {
@@ -493,7 +493,7 @@
         .label {
             font-family: var(--display);
             font-weight: 500;
-            font-size: 14px;
+            font-size: 16px;
             letter-spacing: 0.18em;
             text-transform: uppercase;
             color: var(--chalk-dim);
@@ -754,7 +754,7 @@
 
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a>
-    <span class="version">Bellbrook Darts Club Scoreboard · v1.4</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v1.5</span>
 </footer>
 
 <script>
@@ -1870,7 +1870,7 @@ function downloadHistory() {
     const winner = document.getElementById('winnerName').textContent;
 
     let content = `Bellbrook Darts Club Scoreboard - ${gameMode}\n`;
-    content += `Version: 1.4\n`;
+    content += `Version: 1.5\n`;
     content += `Date: ${date}\n`;
     content += `Winner: ${winner}\n`;
     content += `\n=== Players ===\n`;
