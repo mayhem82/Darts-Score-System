@@ -553,7 +553,7 @@
 
     <div id="shanghaiSetup" style="display: none;">
         <h2>Shanghai Mode</h2>
-        <p class="setup-note">Each player throws with their non-dominant hand to claim a number — that number is theirs for the WHOLE game. Hit a SINGLE, a DOUBLE and a TRIPLE of your own number, in any order, to finish. First four to finish take First, Second, Third and Fourth.</p>
+        <p class="setup-note">Each player throws ONE dart with their non-dominant hand to claim a number — that number is theirs for the WHOLE game, and it's the only non-dominant throw of the match. Claim in any order (lucky pick, first to arrive). The match is then played in the order numbers were claimed. Hit a SINGLE, a DOUBLE and a TRIPLE of your own number, in any order, to finish. First four to finish take First, Second, Third and Fourth.</p>
     </div>
 
     <h2>Add Players (Min 2, Max 12)</h2>
@@ -700,13 +700,15 @@
 <!-- Shanghai Setup Screen -->
 <div id="shanghaiSetupScreen" class="screen">
     <h1>Shanghai — Claim Numbers</h1>
-    <p class="setup-note">Throw with non-dominant hand to claim your number — it's yours for the whole game</p>
+    <p class="setup-note">One throw with the non-dominant hand claims your number (dominant hand for the rest of the match). Claim in any order — the match is played in the order claimed.</p>
 
     <div class="scoreboard" id="shanghaiClaimBoard"></div>
 
     <div id="shanghaiClaimSection">
-        <h2 id="shanghaiClaimPlayer">Player's Turn</h2>
+        <h2>Who's Claiming?</h2>
+        <div class="game-select" style="flex-wrap: wrap;" id="shanghaiPlayerPick"></div>
 
+        <h2>Their Number</h2>
         <div class="number-grid" id="shanghaiClaimGrid"></div>
 
         <button onclick="claimShanghaiNumber()" id="claimShanghaiBtn" disabled>Claim Number</button>
@@ -752,7 +754,7 @@
 
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a>
-    <span class="version">Bellbrook Darts Club Scoreboard · v1.3</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v1.4</span>
 </footer>
 
 <script>
@@ -1868,7 +1870,7 @@ function downloadHistory() {
     const winner = document.getElementById('winnerName').textContent;
 
     let content = `Bellbrook Darts Club Scoreboard - ${gameMode}\n`;
-    content += `Version: 1.3\n`;
+    content += `Version: 1.4\n`;
     content += `Date: ${date}\n`;
     content += `Winner: ${winner}\n`;
     content += `\n=== Players ===\n`;
@@ -1920,11 +1922,17 @@ function shanghaiOrdinal(place) {
 }
 
 let shanghaiState = {
-    claimingPlayerIndex: 0,
+    selectedPlayerIndex: null,
     selectedNumber: null,
+    claimOrder: [],
     currentDarts: [],
     placings: []
 };
+
+function shanghaiThrowOrderLabel(n) {
+    const suffix = n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th';
+    return `Throws ${n}${suffix}`;
+}
 
 function startShanghaiGame() {
     gameState.players.forEach(p => {
@@ -1936,37 +1944,64 @@ function startShanghaiGame() {
     gameState.currentPlayerIndex = 0;
     gameState.history = [];
     gameState.claimedNumbers = [];
-    shanghaiState.claimingPlayerIndex = 0;
+    shanghaiState.selectedPlayerIndex = null;
     shanghaiState.selectedNumber = null;
+    shanghaiState.claimOrder = [];
     shanghaiState.currentDarts = [];
     shanghaiState.placings = [];
 
     showScreen('shanghaiSetupScreen');
 
-    document.getElementById('shanghaiClaimPlayer').textContent =
-        gameState.players[0].name + "'s Turn";
     document.getElementById('shanghaiClaimSection').style.display = 'block';
     document.getElementById('startShanghaiPlayBtn').disabled = true;
 
     renderShanghaiClaimBoard();
+    renderShanghaiPlayerPick();
     renderShanghaiClaimGrid();
 }
 
 function renderShanghaiClaimBoard() {
     const board = document.getElementById('shanghaiClaimBoard');
-    board.innerHTML = gameState.players.map((p, i) => {
-        const claimed = p.claimedNumber !== null;
-        const numberText = claimed ? p.claimedNumber : 'Not claimed';
+    // Claimed players first, in claim (= playing) order, then the rest
+    const claimed = shanghaiState.claimOrder;
+    const unclaimed = gameState.players.filter(p => p.claimedNumber === null);
 
-        return `
-            <div class="player-score ${i === shanghaiState.claimingPlayerIndex && !claimed ? 'current' : ''}">
-                <div class="player-info">
-                    <div class="player-name">${p.name}</div>
-                </div>
-                <div class="score-display" style="font-size: 24px;">${numberText}</div>
+    board.innerHTML = claimed.map((p, i) => `
+        <div class="player-score">
+            <div class="player-info">
+                <div class="player-name">${p.name}</div>
+                <div class="player-avg">${shanghaiThrowOrderLabel(i + 1)}</div>
             </div>
-        `;
+            <div class="score-display" style="font-size: 24px;">${p.claimedNumber}</div>
+        </div>
+    `).join('') + unclaimed.map(p => `
+        <div class="player-score">
+            <div class="player-info">
+                <div class="player-name">${p.name}</div>
+            </div>
+            <div class="score-display" style="font-size: 18px; color: #b9ad92;">Not claimed</div>
+        </div>
+    `).join('');
+}
+
+function renderShanghaiPlayerPick() {
+    const pick = document.getElementById('shanghaiPlayerPick');
+    pick.innerHTML = gameState.players.map((p, i) => {
+        if (p.claimedNumber !== null) return '';
+        const isSelected = i === shanghaiState.selectedPlayerIndex;
+        return `<button class="${isSelected ? '' : 'secondary'}" style="min-width: 40%;" onclick="selectShanghaiClaimPlayer(${i})">${p.name}</button>`;
     }).join('');
+}
+
+function selectShanghaiClaimPlayer(index) {
+    shanghaiState.selectedPlayerIndex = index;
+    renderShanghaiPlayerPick();
+    updateShanghaiClaimButton();
+}
+
+function updateShanghaiClaimButton() {
+    document.getElementById('claimShanghaiBtn').disabled =
+        shanghaiState.selectedPlayerIndex === null || shanghaiState.selectedNumber === null;
 }
 
 function renderShanghaiClaimGrid() {
@@ -1996,34 +2031,38 @@ function selectShanghaiClaimNumber(num) {
         }
     });
 
-    document.getElementById('claimShanghaiBtn').disabled = false;
+    updateShanghaiClaimButton();
 }
 
 function claimShanghaiNumber() {
     const num = shanghaiState.selectedNumber;
-    if (num === null || gameState.claimedNumbers.includes(num)) return;
+    const playerIndex = shanghaiState.selectedPlayerIndex;
+    if (num === null || playerIndex === null || gameState.claimedNumbers.includes(num)) return;
 
-    const player = gameState.players[shanghaiState.claimingPlayerIndex];
+    const player = gameState.players[playerIndex];
+    if (player.claimedNumber !== null) return;
+
     player.claimedNumber = num;
     gameState.claimedNumbers.push(num);
+    shanghaiState.claimOrder.push(player);
 
-    shanghaiState.claimingPlayerIndex++;
+    shanghaiState.selectedPlayerIndex = null;
     shanghaiState.selectedNumber = null;
     document.getElementById('claimShanghaiBtn').disabled = true;
 
-    if (shanghaiState.claimingPlayerIndex >= gameState.players.length) {
+    if (shanghaiState.claimOrder.length >= gameState.players.length) {
         document.getElementById('startShanghaiPlayBtn').disabled = false;
         document.getElementById('shanghaiClaimSection').style.display = 'none';
-    } else {
-        document.getElementById('shanghaiClaimPlayer').textContent =
-            gameState.players[shanghaiState.claimingPlayerIndex].name + "'s Turn";
     }
 
     renderShanghaiClaimBoard();
+    renderShanghaiPlayerPick();
     renderShanghaiClaimGrid();
 }
 
 function startShanghaiPlay() {
+    // Match is played in the order numbers were claimed
+    gameState.players = shanghaiState.claimOrder.slice();
     gameState.currentPlayerIndex = 0;
     showScreen('shanghaiGameScreen');
     startShanghaiTurn();
@@ -2299,8 +2338,9 @@ function resetGame() {
     };
 
     shanghaiState = {
-        claimingPlayerIndex: 0,
+        selectedPlayerIndex: null,
         selectedNumber: null,
+        claimOrder: [],
         currentDarts: [],
         placings: []
     };
