@@ -518,9 +518,29 @@
 
 <main>
 
+<!-- Role Screen: what is this device doing tonight? -->
+<div id="roleScreen" class="screen active">
+    <h1>What's This Phone Doing?</h1>
+
+    <p class="setup-note">ONE device keeps score for the whole game. Everyone else just watches.</p>
+
+    <button onclick="showScreen('setupScreen')">🎯 Keep Score</button>
+    <p class="setup-note" style="margin: 5px 0 25px;">The scorer's device — set up the game and enter every dart.</p>
+
+    <div class="dart-input">
+        <h2>Just Watching?</h2>
+        <p class="setup-note">Ask the scorer for the room code on their screen, type it in, and watch live.</p>
+        <input type="text" id="roleRoomInput" placeholder="ROOM CODE" maxlength="5" autocapitalize="characters"
+               style="font-family: var(--display); font-size: 24px; letter-spacing: 0.3em; text-align: center; text-transform: uppercase;"
+               onkeypress="if(event.key==='Enter') watchLive()">
+        <button class="secondary" onclick="watchLive()">📺 Watch Live</button>
+    </div>
+</div>
+
 <!-- Setup Screen -->
-<div id="setupScreen" class="screen active">
+<div id="setupScreen" class="screen">
     <h1>Scoreboard</h1>
+    <p class="setup-note" style="margin-top: -10px;"><a href="#" onclick="showScreen('roleScreen'); return false;" style="color: #c9a13b;">← Back — this phone is just watching</a></p>
 
     <h2>Select Game Mode</h2>
     <div class="game-select">
@@ -568,8 +588,8 @@
     <button onclick="startGame()" id="startGameBtn" disabled>Start Game</button>
 
     <div class="dart-input" style="margin-top: 30px;">
-        <h2>Live Sharing</h2>
-        <p class="setup-note">Keep score on this device — everyone else watches live on their own phone. Start sharing, then watchers open the Live Scores page and enter the room code.</p>
+        <h2>Broadcast This Scoreboard</h2>
+        <p class="setup-note">SCORER ONLY — don't press this on a watching phone. Start broadcasting here, then everyone else picks "Watch Live" on their own phone and types in the room code below.</p>
         <button class="secondary" onclick="toggleLiveShare()" id="liveShareBtn">Start Live Sharing</button>
         <div id="liveShareInfo" style="display: none; text-align: center;">
             <div class="label">Room Code</div>
@@ -774,7 +794,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v2.0</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v2.1</span>
 </footer>
 
 <script>
@@ -1404,6 +1424,14 @@ function renderHistory() {
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
+}
+
+function watchLive() {
+    const code = document.getElementById('roleRoomInput').value.trim().toUpperCase();
+    const url = new URL('live.html', location.href);
+    if (code) url.searchParams.set('room', code);
+    if (LIVE_TRANSPORT !== 'mqtt') url.searchParams.set('transport', LIVE_TRANSPORT);
+    location.href = url.toString();
 }
 
 // ===== KILLER GAME FUNCTIONS =====
@@ -2092,7 +2120,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v2.0', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v2.1', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
