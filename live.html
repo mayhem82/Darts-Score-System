@@ -108,6 +108,17 @@
 
         button:active { background: var(--brass-deep); }
 
+        button.ghost {
+            background: var(--walnut);
+            color: var(--chalk);
+            border: 1px solid rgba(201, 161, 59, 0.4);
+            border-bottom: 3px solid rgba(201, 161, 59, 0.4);
+            width: auto;
+            flex: 1;
+            padding: 12px 14px;
+            font-size: 16px;
+        }
+
         input {
             width: 100%;
             padding: 18px;
@@ -132,6 +143,37 @@
             line-height: 1.5;
         }
 
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 5px 0 10px;
+        }
+
+        .boards { display: grid; gap: 15px; grid-template-columns: 1fr; }
+
+        @media (orientation: landscape) {
+            .boards.dual { grid-template-columns: 1fr 1fr; }
+        }
+
+        .board {
+            border: 1px solid rgba(201, 161, 59, 0.25);
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 0;
+        }
+
+        .board-label {
+            text-align: center;
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 15px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--chalk-dim);
+            margin-bottom: 6px;
+        }
+
         .live-pill {
             display: inline-flex;
             align-items: center;
@@ -148,16 +190,10 @@
             color: var(--chalk-dim);
         }
 
-        .live-pill .dot {
-            width: 10px; height: 10px; border-radius: 50%;
-            background: #777;
-        }
+        .live-pill .dot { width: 10px; height: 10px; border-radius: 50%; background: #777; }
 
         .live-pill.on { color: var(--chalk); border-color: var(--board-red); }
-        .live-pill.on .dot {
-            background: var(--board-red);
-            animation: pulse 1.6s infinite;
-        }
+        .live-pill.on .dot { background: var(--board-red); animation: pulse 1.6s infinite; }
 
         @keyframes pulse {
             0%, 100% { box-shadow: 0 0 0 0 rgba(178, 58, 46, 0.6); }
@@ -174,7 +210,7 @@
             font-weight: 600;
             font-size: 26px;
             letter-spacing: 0.06em;
-            margin: 18px 0;
+            margin: 14px 0;
             color: var(--chalk);
             text-wrap: balance;
         }
@@ -186,11 +222,11 @@
             font-size: 72px;
             font-weight: 700;
             color: var(--chalk);
-            margin: 20px 0;
+            margin: 15px 0;
             text-shadow: 0 0 30px rgba(201, 161, 59, 0.25);
             background: var(--board-green-deep);
             border: 2px solid var(--brass);
-            padding: 18px 25px;
+            padding: 15px 20px;
             border-radius: 10px;
             line-height: 1;
         }
@@ -199,8 +235,8 @@
             background: var(--walnut);
             border: 1px solid rgba(201, 161, 59, 0.3);
             border-radius: 6px;
-            padding: 15px;
-            margin: 15px 0;
+            padding: 12px;
+            margin: 12px 0;
         }
 
         .player-score {
@@ -214,14 +250,10 @@
             border-left: 4px solid transparent;
         }
 
-        .player-score.current {
-            background: var(--board-green-deep);
-            border-left-color: var(--brass);
-        }
-
+        .player-score.current { background: var(--board-green-deep); border-left-color: var(--brass); }
         .player-score.current::before { content: '▶ '; color: var(--brass); }
 
-        .player-info { flex: 1; }
+        .player-info { flex: 1; min-width: 0; }
         .player-name { font-weight: 600; font-size: 20px; }
         .player-avg { font-size: 17px; color: var(--chalk-dim); margin-top: 4px; }
 
@@ -236,9 +268,9 @@
         .panel {
             background: var(--walnut-deep);
             border: 1px solid rgba(201, 161, 59, 0.25);
-            padding: 15px;
+            padding: 12px;
             border-radius: 6px;
-            margin: 15px 0;
+            margin: 12px 0;
         }
 
         .label {
@@ -254,16 +286,18 @@
         .dart-row {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
+            padding: 8px 0;
             border-bottom: 1px solid rgba(201, 161, 59, 0.15);
         }
 
         .dart-row:last-child { border-bottom: none; }
 
+        .history-list { max-height: 240px; overflow-y: auto; }
+
         .history-item {
-            padding: 10px;
+            padding: 8px;
             border-bottom: 1px solid rgba(201, 161, 59, 0.15);
-            font-size: 19px;
+            font-size: 18px;
         }
 
         .history-item:last-child { border-bottom: none; }
@@ -272,15 +306,15 @@
             text-align: center;
             font-family: var(--display);
             font-weight: 700;
-            font-size: 40px;
+            font-size: 36px;
             letter-spacing: 0.08em;
             text-transform: uppercase;
             color: var(--brass);
             background: var(--walnut);
             border: 2px solid var(--brass);
             border-radius: 10px;
-            padding: 25px;
-            margin: 20px 0;
+            padding: 20px;
+            margin: 15px 0;
             text-shadow: 0 0 20px rgba(201, 161, 59, 0.35);
         }
 
@@ -288,7 +322,7 @@
             text-align: center;
             font-size: 15px;
             color: var(--chalk-dim);
-            margin: 15px 0;
+            margin: 10px 0 0;
         }
 
         .club-footer {
@@ -312,6 +346,127 @@
         }
 
         .center { text-align: center; }
+
+        /* ---- Turn card: quick end-of-turn history + stats flash ---- */
+        #turnCard {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            background: rgba(23, 18, 13, 0.88);
+            padding: 4vh 15px;
+            overflow-y: auto;
+        }
+
+        #turnCard .card {
+            max-width: 640px;
+            margin: 0 auto;
+            background: var(--walnut);
+            border: 2px solid var(--brass);
+            border-radius: 12px;
+            padding: 22px;
+        }
+
+        #turnCard .card .tc-label {
+            text-align: center;
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 16px;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            color: var(--brass);
+        }
+
+        #turnCard .card .tc-headline {
+            text-align: center;
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 30px;
+            letter-spacing: 0.04em;
+            margin: 14px 0;
+            text-wrap: balance;
+        }
+
+        #turnCard .tc-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            margin: 5px 0;
+            background: var(--timber);
+            border-radius: 4px;
+        }
+
+        #turnCard .tc-row .tc-name { font-size: 20px; font-weight: 600; }
+        #turnCard .tc-row .tc-sub { font-size: 16px; color: var(--chalk-dim); }
+        #turnCard .tc-row .tc-score {
+            font-family: var(--display);
+            font-variant-numeric: tabular-nums;
+            font-size: 34px;
+            font-weight: 700;
+        }
+
+        #turnCard .tc-next {
+            text-align: center;
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 22px;
+            letter-spacing: 0.06em;
+            color: var(--board-green);
+            color: #6fbf92;
+            margin-top: 14px;
+        }
+
+        /* ---- TV / Big Screen mode ---- */
+        body.tv { padding: 10px; }
+        body.tv .club-header, body.tv .club-footer, body.tv #pageTitle { display: none; }
+        body.tv main { max-width: none; }
+        body.tv .board-label { font-size: clamp(14px, 2.2vh, 22px); }
+        body.tv .status-line { font-size: clamp(28px, 5.5vh, 58px); margin: 10px 0; }
+        body.tv .remaining-score { font-size: clamp(70px, 17vh, 190px); }
+        body.tv .player-name { font-size: clamp(22px, 4vh, 42px); }
+        body.tv .player-avg { font-size: clamp(15px, 2.6vh, 28px); }
+        body.tv .score-display { font-size: clamp(40px, 8.5vh, 92px); }
+        body.tv .history-item { font-size: clamp(16px, 2.8vh, 30px); }
+        body.tv .dart-row { font-size: clamp(17px, 3vh, 32px); }
+        body.tv .label { font-size: clamp(13px, 2vh, 20px); }
+        body.tv .winner-banner { font-size: clamp(34px, 8vh, 90px); }
+        body.tv .updated { display: none; }
+        body.tv #turnCard .card { max-width: 900px; }
+        body.tv #turnCard .tc-headline { font-size: clamp(28px, 6vh, 64px); }
+        body.tv #turnCard .tc-row .tc-name { font-size: clamp(20px, 3.6vh, 38px); }
+        body.tv #turnCard .tc-row .tc-score { font-size: clamp(30px, 6vh, 64px); }
+        body.tv #turnCard .tc-next { font-size: clamp(20px, 4vh, 44px); }
+
+        /* One board in landscape TV: score panel left, board right */
+        @media (orientation: landscape) {
+            body.tv .boards:not(.dual) .board {
+                display: grid;
+                grid-template-columns: 1.05fr 1fr;
+                gap: 0 22px;
+                grid-template-areas:
+                    "pill   pill"
+                    "banner banner"
+                    "status status"
+                    "rem    sb"
+                    "darts  sb"
+                    "darts  hist"
+                    "upd    upd";
+                align-items: start;
+            }
+            body.tv .boards:not(.dual) .board .board-label { grid-area: pill; }
+            body.tv .boards:not(.dual) .board .center { display: none; }
+            body.tv .boards:not(.dual) .board .winner-banner { grid-area: banner; }
+            body.tv .boards:not(.dual) .board .status-line { grid-area: status; }
+            body.tv .boards:not(.dual) .board .remaining-score { grid-area: rem; }
+            body.tv .boards:not(.dual) .board .scoreboard { grid-area: sb; }
+            body.tv .boards:not(.dual) .board .darts-panel { grid-area: darts; }
+            body.tv .boards:not(.dual) .board .history-panel { grid-area: hist; }
+            body.tv .boards:not(.dual) .board .updated { grid-area: upd; }
+        }
+
+        /* Two boards in TV mode: trim the per-board extras */
+        body.tv .boards.dual .history-list { max-height: 30vh; }
     </style>
 </head>
 <body>
@@ -324,12 +479,14 @@
 
 <main>
 
-<h1>Live Scores</h1>
+<h1 id="pageTitle">Live Scores</h1>
 
 <!-- Join screen -->
 <div id="joinScreen">
-    <p class="setup-note">The scorer's phone shares the game live. Enter the room code shown on the scorer's screen.</p>
-    <input type="text" id="roomInput" placeholder="ROOM CODE" maxlength="5" autocapitalize="characters" autofocus
+    <p class="setup-note">The scorer's phone shares the game live. Enter the room code shown on the scorer's screen. Two boards going? Enter both codes.</p>
+    <input type="text" id="roomInput" placeholder="BOARD 1 CODE" maxlength="5" autocapitalize="characters" autofocus
+           onkeypress="if(event.key==='Enter') joinRoom()">
+    <input type="text" id="roomInput2" placeholder="BOARD 2 CODE (OPTIONAL)" maxlength="5" autocapitalize="characters"
            onkeypress="if(event.key==='Enter') joinRoom()">
     <button onclick="joinRoom()">Watch Live</button>
     <div class="setup-note" id="joinError"></div>
@@ -338,48 +495,32 @@
 
 <!-- Live screen -->
 <div id="liveScreen" style="display: none;">
-    <div class="center">
-        <span class="live-pill" id="livePill"><span class="dot"></span><span id="pillText">Connecting…</span></span>
+    <div class="controls">
+        <button class="ghost" id="alertsBtn" onclick="toggleAlerts()">🔔 Alerts: Off</button>
+        <button class="ghost" id="tvBtn" onclick="toggleTv()">📺 Big Screen</button>
     </div>
 
-    <button class="secondary" id="alertsBtn" onclick="toggleAlerts()"
-        style="background: var(--walnut); color: var(--chalk); border: 1px solid rgba(201, 161, 59, 0.4); border-bottom: 3px solid rgba(201, 161, 59, 0.4);">🔔 Turn Alerts: Off</button>
-
-    <div id="toast" style="display: none; position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%);
-        background: var(--board-green-deep); border: 2px solid var(--brass); color: var(--chalk);
-        padding: 14px 22px; border-radius: 10px; font-size: 18px; max-width: 90vw; z-index: 10; text-align: center;"></div>
-
-    <div id="winnerBanner" class="winner-banner" style="display: none;"></div>
-
-    <div class="status-line" id="statusLine"></div>
-
-    <div class="remaining-score" id="remainingScore" style="display: none;"></div>
-
-    <div class="scoreboard" id="scoreboard"></div>
-
-    <div class="panel" id="dartsPanel" style="display: none;">
-        <div class="label">This Turn</div>
-        <div id="dartsList"></div>
-    </div>
-
-    <div class="panel" id="historyPanel" style="display: none;">
-        <div class="label">Shot History</div>
-        <div id="historyList"></div>
-    </div>
-
-    <div class="updated" id="updatedLine"></div>
+    <div id="boards" class="boards"></div>
 </div>
 
 </main>
 
 <footer class="club-footer">
     <a href="index.html">Scoreboard</a> &nbsp;·&nbsp; <a href="rules.html">House Rules</a> &nbsp;·&nbsp; <a href="history.html">Club History</a>
-    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v2.1</div>
+    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v2.2</div>
 </footer>
 
+<!-- End-of-turn quick stats card -->
+<div id="turnCard" onclick="hideTurnCard()">
+    <div class="card">
+        <div class="tc-label" id="tcLabel"></div>
+        <div class="tc-headline" id="tcHeadline"></div>
+        <div id="tcRows"></div>
+        <div class="tc-next" id="tcNext"></div>
+    </div>
+</div>
+
 <script>
-// Same relay list as the scoreboard — the scorer publishes to all of
-// them, so we connect to whichever answers first with game data.
 const LIVE_BROKERS = [
     'wss://broker.emqx.io:8084/mqtt',
     'wss://broker.hivemq.com:8884/mqtt',
@@ -387,105 +528,36 @@ const LIVE_BROKERS = [
 ];
 const params = new URLSearchParams(location.search);
 const TRANSPORT = params.get('transport') || 'mqtt';
+const PLACES = ['First', 'Second', 'Third', 'Fourth'];
 
-let lastTs = null;
-let client = null;
-let channel = null;
-let gotData = false;
+const boards = [];
+let totalBoards = 1;
+let alertsOn = false;
+let audioCtx = null;
+let turnCardTimer = null;
 
 function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function setPill(on, text) {
-    const pill = document.getElementById('livePill');
-    pill.classList.toggle('on', on);
-    document.getElementById('pillText').textContent = text;
-}
-
 function joinRoom() {
-    const code = document.getElementById('roomInput').value.trim().toUpperCase();
-    if (code.length < 4) {
+    const c1 = document.getElementById('roomInput').value.trim().toUpperCase();
+    const c2 = document.getElementById('roomInput2').value.trim().toUpperCase();
+    if (c1.length < 4 && c2.length < 4) {
         document.getElementById('joinError').textContent = 'Enter the 5-character room code from the scorer\'s screen.';
         return;
     }
+    const codes = [c1, c2].filter(c => c.length >= 4);
     const url = new URL(location.href);
-    url.searchParams.set('room', code);
+    url.searchParams.set('room', codes.join(','));
     location.href = url.toString();
 }
 
-function connect(room) {
-    document.getElementById('joinScreen').style.display = 'none';
-    document.getElementById('liveScreen').style.display = 'block';
-    setPill(false, 'Connecting…');
-
-    if (TRANSPORT === 'bc') {
-        channel = new BroadcastChannel('bbdc-live-' + room);
-        channel.onmessage = e => handleMessage(String(e.data));
-        channel.postMessage(JSON.stringify({ hello: true }));
-        setPill(true, 'Live · Room ' + room);
-        return;
-    }
-
-    const s = document.createElement('script');
-    s.src = 'https://unpkg.com/mqtt@5/dist/mqtt.min.js';
-    s.onload = () => tryBroker(room, 0);
-    s.onerror = () => setPill(false, 'No internet — can\'t connect');
-    document.head.appendChild(s);
-}
-
-// Try each relay in turn; move on if it won't connect or has no game
-// data for this room within a few seconds (retained messages mean a
-// live room answers instantly).
-function tryBroker(room, i) {
-    if (gotData) return;
-    if (i >= LIVE_BROKERS.length) {
-        setPill(false, 'Room not found — check the code');
-        document.getElementById('statusLine').textContent =
-            'No live game found for room ' + room + '. Check the code on the scorer\'s screen, and that sharing is running.';
-        return;
-    }
-    setPill(false, `Connecting… (relay ${i + 1} of ${LIVE_BROKERS.length})`);
-    const c = window.mqtt.connect(LIVE_BROKERS[i], { connectTimeout: 7000, reconnectPeriod: 3000 });
-    let connected = false;
-
-    const giveUp = setTimeout(() => {
-        if (!gotData) {
-            try { c.end(true); } catch (e) {}
-            tryBroker(room, i + 1);
-        }
-    }, connectedWait());
-
-    function connectedWait() { return 11000; }
-
-    c.on('connect', () => {
-        connected = true;
-        c.subscribe(`bellbrook-darts-club/${room}/state`);
-    });
-    c.on('message', (t, msg) => {
-        if (!gotData) {
-            gotData = true;
-            client = c;
-            clearTimeout(giveUp);
-            setPill(true, 'Live · Room ' + room);
-            c.on('reconnect', () => setPill(false, 'Reconnecting…'));
-            c.on('close', () => { if (gotData) setPill(false, 'Reconnecting…'); });
-        }
-        setPill(true, 'Live · Room ' + room);
-        handleMessage(msg.toString());
-    });
-}
-
-// ----- Turn alerts -----
-let alertsOn = false;
-let audioCtx = null;
-let lastCurrentName = null;
-let lastWinner = null;
-let toastTimer = null;
+// ---- Alerts + turn card ----
 
 function toggleAlerts() {
     alertsOn = !alertsOn;
-    document.getElementById('alertsBtn').textContent = '🔔 Turn Alerts: ' + (alertsOn ? 'On' : 'Off');
+    document.getElementById('alertsBtn').textContent = '🔔 Alerts: ' + (alertsOn ? 'On' : 'Off');
     if (alertsOn) {
         try {
             if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
@@ -507,153 +579,299 @@ function beep(vol) {
     } catch (e) {}
 }
 
-function showToast(text) {
-    const t = document.getElementById('toast');
-    t.textContent = text;
-    t.style.display = 'block';
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { t.style.display = 'none'; }, 5000);
+function hideTurnCard() {
+    document.getElementById('turnCard').style.display = 'none';
+    clearTimeout(turnCardTimer);
 }
 
-function turnAlert(text) {
-    if (!alertsOn) return;
-    try { if (navigator.vibrate) navigator.vibrate([180, 80, 180]); } catch (e) {}
-    beep();
-    showToast(text);
+// Quick end-of-turn sequence: headline of what just happened, every
+// player's updated score/stats, and who's up next. Auto-dismisses.
+function showTurnCard(board, st, headline, next) {
+    document.getElementById('tcLabel').textContent =
+        (totalBoards > 1 ? `BOARD ${board.n} · ` : '') + 'ROOM ' + board.room;
+    document.getElementById('tcHeadline').textContent = headline;
+
+    document.getElementById('tcRows').innerHTML = (st.players || []).map(p => {
+        let sub = '', score = '';
+        if (st.mode === 'x01') { sub = `avg ${p.avg}`; score = p.score; }
+        else if (st.mode === 'killer') { sub = p.out ? 'eliminated' : 'in the game'; score = `${p.strikes}/5`; }
+        else {
+            const seg = v => v ? '✓' : '—';
+            sub = p.place ? `finished ${PLACES[p.place - 1] || p.place}` : (p.hits ? `S ${seg(p.hits.s)} D ${seg(p.hits.d)} T ${seg(p.hits.t)}` : '');
+            score = p.num !== null && p.num !== undefined ? `#${p.num}` : '';
+        }
+        return `<div class="tc-row">
+            <div><div class="tc-name">${esc(p.name)}</div><div class="tc-sub">${esc(sub)}</div></div>
+            <div class="tc-score">${esc(score)}</div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('tcNext').textContent = next || '';
+    document.getElementById('turnCard').style.display = 'block';
+    clearTimeout(turnCardTimer);
+    turnCardTimer = setTimeout(hideTurnCard, 5000);
+
+    if (alertsOn) {
+        try { if (navigator.vibrate) navigator.vibrate([180, 80, 180]); } catch (e) {}
+        beep();
+        try {
+            if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+                new Notification('Bellbrook Darts 🎯', { body: headline + (next ? ' ' + next : '') });
+            }
+        } catch (e) {}
+    }
+}
+
+// ---- TV / Big Screen mode ----
+
+function toggleTv() {
+    const on = !document.body.classList.contains('tv');
+    document.body.classList.toggle('tv', on);
+    document.getElementById('tvBtn').textContent = on ? '↩ Exit Big Screen' : '📺 Big Screen';
     try {
-        if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-            new Notification('Bellbrook Darts 🎯', { body: text });
+        if (on && document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        } else if (!on && document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
         }
     } catch (e) {}
 }
 
-function checkAlerts(st) {
-    const current = (st.players || []).find(p => p.current);
-    const name = current ? current.name : null;
-
-    if (st.winner && st.winner !== lastWinner) {
-        turnAlert(`🎯 ${st.winner} WINS!`);
-        lastWinner = st.winner;
-        lastCurrentName = null;
-        return;
+document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement && document.body.classList.contains('tv')) {
+        document.body.classList.remove('tv');
+        document.getElementById('tvBtn').textContent = '📺 Big Screen';
     }
-    if (!st.winner) lastWinner = null;
+});
 
-    if (name && lastCurrentName && name !== lastCurrentName) {
-        const lastEntry = st.history && st.history[0] ? ` — ${st.history[0]}` : '';
-        turnAlert(`Turn over${lastEntry}. Now it's ${name}'s throw.`);
-    }
-    if (name) lastCurrentName = name;
-}
-// ----- End turn alerts -----
+// ---- Boards ----
 
-function handleMessage(raw) {
-    let st;
-    try { st = JSON.parse(raw); } catch (e) { return; }
-    if (st.hello) return;
-    if (st.ended) {
-        setPill(false, 'Sharing ended');
-        document.getElementById('statusLine').textContent = 'The scorer has stopped sharing.';
-        return;
-    }
-    lastTs = st.ts || Date.now();
-    checkAlerts(st);
-    render(st);
+function boardHtml(n) {
+    return `
+    <section class="board" id="board${n}">
+        <div class="board-label"></div>
+        <div class="center"><span class="live-pill"><span class="dot"></span><span class="pillText">Connecting…</span></span></div>
+        <div class="winner-banner" style="display: none;"></div>
+        <div class="status-line"></div>
+        <div class="remaining-score" style="display: none;"></div>
+        <div class="scoreboard"></div>
+        <div class="panel darts-panel" style="display: none;"><div class="label">This Turn</div><div class="darts-list"></div></div>
+        <div class="panel history-panel" style="display: none;"><div class="label">Shot History</div><div class="history-list"></div></div>
+        <div class="updated"></div>
+    </section>`;
 }
 
-function render(st) {
-    const modeLabel = st.mode === 'x01' ? (st.gameType || 'x01') :
-                      st.mode === 'killer' ? 'Killer' : 'Shanghai';
+function startBoard(room, n) {
+    const root = document.getElementById('board' + n);
+    const q = sel => root.querySelector(sel);
+    const board = {
+        n, room, root,
+        lastTs: null,
+        lastCurrent: null,
+        lastWinner: null,
+        gotData: false,
+        client: null,
+        channel: null
+    };
+    q('.board-label').textContent = (totalBoards > 1 ? `Board ${n} · ` : '') + 'Room ' + room;
 
-    // Winner banner
-    const banner = document.getElementById('winnerBanner');
-    if (st.winner) {
-        banner.textContent = `🎯 ${st.winner} WINS! 🎯`;
-        banner.style.display = 'block';
-    } else {
-        banner.style.display = 'none';
+    function setPill(on, text) {
+        q('.live-pill').classList.toggle('on', on);
+        q('.pillText').textContent = text;
     }
 
-    document.getElementById('statusLine').textContent = `${modeLabel} — ${st.status || ''}`;
+    function render(st) {
+        const modeLabel = st.mode === 'x01' ? (st.gameType || 'x01') :
+                          st.mode === 'killer' ? 'Killer' : 'Shanghai';
 
-    // Big remaining score for x01
-    const rem = document.getElementById('remainingScore');
-    if (st.remaining !== undefined && !st.winner) {
-        rem.textContent = st.remaining;
-        rem.style.display = 'block';
-    } else {
-        rem.style.display = 'none';
-    }
-
-    // Scoreboard
-    const PLACES = ['First', 'Second', 'Third', 'Fourth'];
-    const board = document.getElementById('scoreboard');
-    board.innerHTML = (st.players || []).map(p => {
-        let sub = '', big = '', extraStyle = '';
-        if (st.mode === 'x01') {
-            sub = `Avg: ${p.avg}`;
-            big = p.score;
-        } else if (st.mode === 'killer') {
-            const numText = p.num === 25 ? 'Bull 25' : p.num === 50 ? 'Bull 50' : (p.num === null || p.num === undefined ? 'not claimed' : p.num);
-            sub = `Number: ${numText} · Strikes: ${p.strikes}/5`;
-            big = p.out ? 'OUT' : '';
-            if (p.out) extraStyle = 'opacity: 0.5; text-decoration: line-through;';
+        const banner = q('.winner-banner');
+        if (st.winner) {
+            banner.textContent = `🎯 ${st.winner} WINS! 🎯`;
+            banner.style.display = 'block';
         } else {
-            const numText = (p.num === null || p.num === undefined) ? 'not claimed' : p.num;
-            if (p.place) {
-                sub = `Number: ${numText}`;
-                big = (PLACES[p.place - 1] || p.place).toUpperCase();
-                extraStyle = 'opacity: 0.75;';
-            } else if (p.hits) {
-                const seg = v => v ? '✓' : '—';
-                sub = `Number: ${numText} · S ${seg(p.hits.s)} · D ${seg(p.hits.d)} · T ${seg(p.hits.t)}`;
-            } else {
-                sub = `Number: ${numText}`;
-            }
+            banner.style.display = 'none';
         }
-        const bigStyle = (st.mode !== 'x01') ? 'font-size: 22px; color: #c9a13b;' : '';
-        return `
-            <div class="player-score ${p.current && !st.winner ? 'current' : ''}" style="${extraStyle}">
-                <div class="player-info">
-                    <div class="player-name">${esc(p.name)}</div>
-                    <div class="player-avg">${esc(sub)}</div>
+
+        q('.status-line').textContent = `${modeLabel} — ${st.status || ''}`;
+
+        const rem = q('.remaining-score');
+        if (st.remaining !== undefined && !st.winner) {
+            rem.textContent = st.remaining;
+            rem.style.display = 'block';
+        } else {
+            rem.style.display = 'none';
+        }
+
+        q('.scoreboard').innerHTML = (st.players || []).map(p => {
+            let sub = '', big = '', extraStyle = '';
+            if (st.mode === 'x01') {
+                sub = `Avg: ${p.avg}`;
+                big = p.score;
+            } else if (st.mode === 'killer') {
+                const numText = p.num === 25 ? 'Bull 25' : p.num === 50 ? 'Bull 50' : (p.num === null || p.num === undefined ? 'not claimed' : p.num);
+                sub = `Number: ${numText} · Strikes: ${p.strikes}/5`;
+                big = p.out ? 'OUT' : '';
+                if (p.out) extraStyle = 'opacity: 0.5; text-decoration: line-through;';
+            } else {
+                const numText = (p.num === null || p.num === undefined) ? 'not claimed' : p.num;
+                if (p.place) {
+                    sub = `Number: ${numText}`;
+                    big = (PLACES[p.place - 1] || p.place).toString().toUpperCase();
+                    extraStyle = 'opacity: 0.75;';
+                } else if (p.hits) {
+                    const seg = v => v ? '✓' : '—';
+                    sub = `Number: ${numText} · S ${seg(p.hits.s)} · D ${seg(p.hits.d)} · T ${seg(p.hits.t)}`;
+                } else {
+                    sub = `Number: ${numText}`;
+                }
+            }
+            const bigStyle = (st.mode !== 'x01') ? 'font-size: 0.6em; color: #c9a13b;' : '';
+            return `
+                <div class="player-score ${p.current && !st.winner ? 'current' : ''}" style="${extraStyle}">
+                    <div class="player-info">
+                        <div class="player-name">${esc(p.name)}</div>
+                        <div class="player-avg">${esc(sub)}</div>
+                    </div>
+                    <div class="score-display" style="${bigStyle}">${esc(big)}</div>
                 </div>
-                <div class="score-display" style="${bigStyle}">${esc(big)}</div>
-            </div>
-        `;
-    }).join('');
+            `;
+        }).join('');
 
-    // Current darts
-    const dartsPanel = document.getElementById('dartsPanel');
-    if (st.darts && st.darts.length && !st.winner) {
-        document.getElementById('dartsList').innerHTML = st.darts.map((d, i) =>
-            `<div class="dart-row"><span>Dart ${i + 1}</span><span>${esc(d)}</span></div>`).join('');
-        dartsPanel.style.display = 'block';
-    } else {
-        dartsPanel.style.display = 'none';
+        const dartsPanel = q('.darts-panel');
+        if (st.darts && st.darts.length && !st.winner) {
+            q('.darts-list').innerHTML = st.darts.map((d, i) =>
+                `<div class="dart-row"><span>Dart ${i + 1}</span><span>${esc(d)}</span></div>`).join('');
+            dartsPanel.style.display = 'block';
+        } else {
+            dartsPanel.style.display = 'none';
+        }
+
+        const histPanel = q('.history-panel');
+        if (st.history && st.history.length) {
+            q('.history-list').innerHTML = st.history.map(h =>
+                `<div class="history-item">${esc(h)}</div>`).join('');
+            histPanel.style.display = 'block';
+        } else {
+            histPanel.style.display = 'none';
+        }
     }
 
-    // History
-    const histPanel = document.getElementById('historyPanel');
-    if (st.history && st.history.length) {
-        document.getElementById('historyList').innerHTML = st.history.map(h =>
-            `<div class="history-item">${esc(h)}</div>`).join('');
-        histPanel.style.display = 'block';
-    } else {
-        histPanel.style.display = 'none';
+    function checkTurnEnd(st) {
+        const current = (st.players || []).find(p => p.current);
+        const name = current ? current.name : null;
+
+        if (st.winner && st.winner !== board.lastWinner) {
+            showTurnCard(board, st, `🎯 ${st.winner} WINS!`, '');
+            board.lastWinner = st.winner;
+            board.lastCurrent = null;
+            return;
+        }
+        if (!st.winner) board.lastWinner = null;
+
+        if (name && board.lastCurrent && name !== board.lastCurrent) {
+            const headline = st.history && st.history[0] ? st.history[0] : 'Turn over';
+            showTurnCard(board, st, headline, `Now it's ${name}'s throw`);
+        }
+        if (name) board.lastCurrent = name;
     }
+
+    function handleMessage(raw) {
+        let st;
+        try { st = JSON.parse(raw); } catch (e) { return; }
+        if (st.hello) return;
+        if (st.ended) {
+            setPill(false, 'Sharing ended');
+            q('.status-line').textContent = 'The scorer has stopped sharing.';
+            return;
+        }
+        board.lastTs = st.ts || Date.now();
+        checkTurnEnd(st);
+        render(st);
+    }
+
+    if (TRANSPORT === 'bc') {
+        board.channel = new BroadcastChannel('bbdc-live-' + room);
+        board.channel.onmessage = e => handleMessage(String(e.data));
+        board.channel.postMessage(JSON.stringify({ hello: true }));
+        setPill(true, 'Live · ' + room);
+    } else {
+        tryBroker(0);
+    }
+
+    // Try each relay in turn; move on if it won't connect or has no
+    // game data for this room within a few seconds (retained messages
+    // mean a live room answers instantly).
+    function tryBroker(i) {
+        if (board.gotData) return;
+        if (i >= LIVE_BROKERS.length) {
+            setPill(false, 'Room not found');
+            q('.status-line').textContent =
+                'No live game found for room ' + room + '. Check the code on the scorer\'s screen, and that sharing is running.';
+            return;
+        }
+        setPill(false, `Connecting… (relay ${i + 1}/${LIVE_BROKERS.length})`);
+        const c = window.mqtt.connect(LIVE_BROKERS[i], { connectTimeout: 7000, reconnectPeriod: 3000 });
+
+        const giveUp = setTimeout(() => {
+            if (!board.gotData) {
+                try { c.end(true); } catch (e) {}
+                tryBroker(i + 1);
+            }
+        }, 11000);
+
+        c.on('connect', () => c.subscribe(`bellbrook-darts-club/${room}/state`));
+        c.on('message', (t, msg) => {
+            if (!board.gotData) {
+                board.gotData = true;
+                board.client = c;
+                clearTimeout(giveUp);
+                c.on('reconnect', () => setPill(false, 'Reconnecting…'));
+                c.on('close', () => { if (board.gotData) setPill(false, 'Reconnecting…'); });
+            }
+            setPill(true, 'Live · ' + room);
+            handleMessage(msg.toString());
+        });
+    }
+
+    board._q = q;
+    boards.push(board);
 }
 
 setInterval(() => {
-    if (!lastTs) return;
-    const secs = Math.max(0, Math.round((Date.now() - lastTs) / 1000));
-    document.getElementById('updatedLine').textContent =
-        secs < 5 ? 'Updated just now' : `Updated ${secs}s ago`;
+    boards.forEach(b => {
+        if (!b.lastTs) return;
+        const secs = Math.max(0, Math.round((Date.now() - b.lastTs) / 1000));
+        b._q('.updated').textContent = secs < 5 ? 'Updated just now' : `Updated ${secs}s ago`;
+    });
 }, 1000);
 
-const room = (params.get('room') || '').toUpperCase();
-if (room) {
-    connect(room);
+function connectAll(rooms) {
+    document.getElementById('joinScreen').style.display = 'none';
+    document.getElementById('liveScreen').style.display = 'block';
+    totalBoards = rooms.length;
+    const wrap = document.getElementById('boards');
+    wrap.classList.toggle('dual', rooms.length > 1);
+    wrap.innerHTML = rooms.map((r, i) => boardHtml(i + 1)).join('');
+
+    const begin = () => rooms.forEach((r, i) => startBoard(r, i + 1));
+    if (TRANSPORT === 'bc') {
+        begin();
+    } else {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/mqtt@5/dist/mqtt.min.js';
+        s.onload = begin;
+        s.onerror = () => {
+            document.getElementById('boards').innerHTML =
+                '<p class="setup-note">No internet — can\'t connect to the live game.</p>';
+        };
+        document.head.appendChild(s);
+    }
+}
+
+const roomParam = (params.get('room') || '').toUpperCase();
+const rooms = roomParam.split(',').map(r => r.trim()).filter(r => r.length >= 4).slice(0, 2);
+if (rooms.length) {
+    connectAll(rooms);
 }
 </script>
 
