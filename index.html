@@ -674,13 +674,88 @@
     <div class="winner-screen">
         <h1 id="winnerName"></h1>
         <h2>🎯 WINS! 🎯</h2>
+        <div id="pintTag" class="message success" style="display: none;">🍺 Bonus round — winner takes the pint!</div>
 
         <div class="history" id="winnerHistory" style="max-height: 300px; margin: 20px 0;"></div>
 
+        <button class="secondary" id="bonusRoundBtn" onclick="openBonusRound()" style="display: none;">🍺 Bonus Round — Pint Shootout</button>
         <button onclick="downloadHistory()">Download Game History</button>
         <button class="secondary" onclick="saveMatchToRepo()">Publish to Club History</button>
         <p class="setup-note" style="margin: 5px 0; font-size: 15px;">This game is already saved on this device — see <a href="history.html" style="color: #c9a13b;">Club History</a>. Publishing puts it on the club site for everyone (needs the club GitHub login).</p>
         <button onclick="newMatch()">Start New Match</button>
+    </div>
+</div>
+
+<!-- Bonus Round: setup -->
+<div id="bonusSetupScreen" class="screen">
+    <h1>🍺 Bonus Round</h1>
+    <p class="setup-note">Everyone who didn't take a place throws for a pint. Scorer picks the format on the night.</p>
+
+    <div class="scoreboard" id="bonusContenders"></div>
+
+    <h2>Pick the Format</h2>
+    <button onclick="startBonusHigh3()">Highest 3 Darts</button>
+    <button onclick="startBonusBull()">Bull Shootout</button>
+    <button class="secondary" onclick="startBonusFullGame()">Play a Full Game for It</button>
+    <button class="secondary" onclick="showScreen('winnerScreen')">← Back to Results</button>
+</div>
+
+<!-- Bonus Round: highest 3 darts -->
+<div id="bonusHigh3Screen" class="screen">
+    <h1>🍺 Highest 3 Darts</h1>
+
+    <div class="scoreboard" id="bonusHigh3Board"></div>
+
+    <div class="dart-input">
+        <h2 id="bonusThrower">Player's Turn</h2>
+        <div style="text-align: center; color: #b9ad92; margin: 10px 0;">
+            Dart <span id="bonusDartNumber">1</span> of 3 · Total: <span id="bonusTurnTotal" style="color: #c9a13b; font-weight: 700;">0</span>
+        </div>
+
+        <div class="label">Select Number</div>
+        <div class="number-grid" id="bonusNumberGrid"></div>
+
+        <div class="multiplier-section" id="bonusMultiplierSection" style="display: none;">
+            <div class="label">Select Multiplier</div>
+            <div class="multiplier-grid">
+                <button class="multiplier-btn" onclick="selectBonusMultiplier(1)">Single</button>
+                <button class="multiplier-btn" onclick="selectBonusMultiplier(2)">Double</button>
+                <button class="multiplier-btn" onclick="selectBonusMultiplier(3)">Triple</button>
+            </div>
+        </div>
+
+        <button onclick="confirmBonusDart()" id="confirmBonusBtn" disabled>Confirm Dart</button>
+        <button class="secondary" onclick="undoBonusDart()" id="undoBonusBtn" disabled>Undo Last Dart</button>
+    </div>
+
+    <button onclick="endBonusTurn()" id="endBonusTurnBtn">End Turn</button>
+    <button class="danger" onclick="cancelBonus()">Cancel Bonus Round</button>
+</div>
+
+<!-- Bonus Round: bull shootout -->
+<div id="bonusBullScreen" class="screen">
+    <h1>🍺 Bull Shootout</h1>
+    <p class="setup-note">One dart each at the bull. Hit stays in, miss drops out — if everyone misses, everyone survives. Last one in wins the pint.</p>
+
+    <h2>Round <span id="bullRound">1</span></h2>
+    <div id="bullList"></div>
+
+    <button onclick="endBullRound()" id="endBullRoundBtn">End Round</button>
+    <button class="danger" onclick="cancelBonus()">Cancel Bonus Round</button>
+
+    <div class="history" id="bullRecap"></div>
+</div>
+
+<!-- Bonus Round: winner -->
+<div id="bonusWinnerScreen" class="screen">
+    <div class="winner-screen">
+        <h1 id="bonusWinnerName"></h1>
+        <h2>🍺 WINS THE PINT! 🍺</h2>
+
+        <div class="history" id="bonusRecap" style="max-height: 300px; margin: 20px 0;"></div>
+
+        <button onclick="newMatch()">Start New Match</button>
+        <button class="secondary" onclick="showScreen('winnerScreen')">← Back to Results</button>
     </div>
 </div>
 
@@ -804,7 +879,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v2.5</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v2.6</span>
 </footer>
 
 <script>
@@ -822,7 +897,8 @@ let gameState = {
     selectedMultiplier: 1,
     history: [],
     turnStartScore: null,
-    claimedNumbers: []
+    claimedNumbers: [],
+    bonusPint: false
 };
 
 function selectPlaces(n) {
@@ -1483,6 +1559,7 @@ function showX01Results() {
         `).join('');
 
     saveMatchLocally();
+    updateBonusButton();
     showScreen('winnerScreen');
 }
 
@@ -2039,6 +2116,7 @@ function showKillerWinner(player) {
         `).join('');
 
     saveMatchLocally();
+    updateBonusButton();
     showScreen('winnerScreen');
 }
 
@@ -2224,7 +2302,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v2.5', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v2.6', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
@@ -2653,6 +2731,7 @@ function showShanghaiResults() {
         `).join('');
 
     saveMatchLocally();
+    updateBonusButton();
     showScreen('winnerScreen');
 }
 
@@ -2914,6 +2993,310 @@ function saveMatchToRepo() {
 
 // ===== END CLUB HISTORY =====
 
+// ===== BONUS ROUND (pint shootout) =====
+// After a game, players who didn't take a place can throw for a pint.
+// Formats: highest 3 darts (ties rethrow), sudden-death bull shootout,
+// or spin up a full game with just the contenders.
+
+let bonusState = {
+    contenders: [],   // [{name}]
+    active: [],       // indices into contenders still in it
+    currentIndex: 0,  // position within active (high3)
+    round: 1,
+    totals: {},       // name -> 3-dart total (high3)
+    darts: [],        // current thrower's darts (high3)
+    selNum: null,
+    selMult: 1,
+    bullHits: {},     // name -> true/false this round
+    recap: []
+};
+
+function updateBonusButton() {
+    const contenders = gameState.players.filter(p =>
+        gameState.gameMode === 'killer' ? p.eliminated : !p.place);
+    bonusState.contenders = contenders.map(p => ({ name: p.name }));
+    document.getElementById('bonusRoundBtn').style.display =
+        contenders.length >= 2 ? 'block' : 'none';
+    document.getElementById('pintTag').style.display =
+        gameState.bonusPint ? 'block' : 'none';
+}
+
+function openBonusRound() {
+    document.getElementById('bonusContenders').innerHTML = bonusState.contenders.map(c => `
+        <div class="player-score">
+            <div class="player-info"><div class="player-name">${c.name}</div></div>
+        </div>
+    `).join('');
+    showScreen('bonusSetupScreen');
+}
+
+function cancelBonus() {
+    if (confirm('Cancel the bonus round?')) showScreen('winnerScreen');
+}
+
+function showBonusWinner(name) {
+    document.getElementById('bonusWinnerName').textContent = name;
+    document.getElementById('bonusRecap').innerHTML = '<div class="label">How It Went</div>' +
+        bonusState.recap.map(r => `<div class="history-item">${r}</div>`).join('');
+    showScreen('bonusWinnerScreen');
+}
+
+// ---- Highest 3 darts ----
+
+function bonusContender() {
+    return bonusState.contenders[bonusState.active[bonusState.currentIndex]];
+}
+
+function startBonusHigh3() {
+    bonusState.active = bonusState.contenders.map((c, i) => i);
+    bonusState.round = 1;
+    bonusState.totals = {};
+    bonusState.recap = [];
+    renderBonusNumberGrid();
+    beginBonusThrow(0);
+    renderBonusHigh3Board();
+    showScreen('bonusHigh3Screen');
+}
+
+function renderBonusNumberGrid() {
+    const grid = document.getElementById('bonusNumberGrid');
+    let html = '';
+    for (let i = 1; i <= 20; i++) {
+        html += `<button class="number-btn" onclick="selectBonusNumber(${i})">${i}</button>`;
+    }
+    html += `<button class="number-btn" onclick="selectBonusNumber(25)">25</button>`;
+    html += `<button class="number-btn" onclick="selectBonusNumber(50)">50</button>`;
+    html += `<button class="number-btn secondary" onclick="selectBonusMiss()">MISS</button>`;
+    grid.innerHTML = html;
+}
+
+function beginBonusThrow(posInActive) {
+    bonusState.currentIndex = posInActive;
+    bonusState.darts = [];
+    bonusState.selNum = null;
+    bonusState.selMult = 1;
+    document.getElementById('bonusThrower').textContent = bonusContender().name + "'s Turn";
+    document.getElementById('bonusDartNumber').textContent = '1';
+    document.getElementById('bonusTurnTotal').textContent = '0';
+    document.getElementById('bonusMultiplierSection').style.display = 'none';
+    document.getElementById('confirmBonusBtn').disabled = true;
+    document.getElementById('undoBonusBtn').disabled = true;
+    document.querySelectorAll('#bonusNumberGrid .number-btn').forEach(b => {
+        b.classList.remove('selected');
+        b.disabled = false;
+    });
+}
+
+function renderBonusHigh3Board() {
+    const board = document.getElementById('bonusHigh3Board');
+    board.innerHTML = bonusState.contenders.map((c, i) => {
+        const inRound = bonusState.active.includes(i);
+        const isCurrent = inRound && bonusState.active[bonusState.currentIndex] === i;
+        const total = bonusState.totals[c.name];
+        const outStyle = inRound ? '' : 'opacity: 0.5; text-decoration: line-through;';
+        return `
+            <div class="player-score ${isCurrent ? 'current' : ''}" style="${outStyle}">
+                <div class="player-info"><div class="player-name">${c.name}</div></div>
+                <div class="score-display">${total !== undefined ? total : '—'}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function selectBonusNumber(num) {
+    bonusState.selNum = num;
+    bonusState.selMult = 1;
+    document.querySelectorAll('#bonusNumberGrid .number-btn').forEach(btn => {
+        btn.classList.remove('selected');
+        if (parseInt(btn.textContent) === num) btn.classList.add('selected');
+    });
+    const mult = document.getElementById('bonusMultiplierSection');
+    if (num === 25 || num === 50) {
+        mult.style.display = 'none';
+    } else {
+        mult.style.display = 'block';
+        document.querySelectorAll('#bonusMultiplierSection .multiplier-btn').forEach(b => b.classList.remove('selected'));
+        document.querySelector('#bonusMultiplierSection .multiplier-btn').classList.add('selected');
+    }
+    document.getElementById('confirmBonusBtn').disabled = false;
+}
+
+function selectBonusMultiplier(mult) {
+    bonusState.selMult = mult;
+    document.querySelectorAll('#bonusMultiplierSection .multiplier-btn').forEach(b => b.classList.remove('selected'));
+    event.target.classList.add('selected');
+}
+
+function pushBonusDart(score, label) {
+    if (bonusState.darts.length >= 3) return;
+    bonusState.darts.push({ score, label });
+    document.getElementById('undoBonusBtn').disabled = false;
+    document.getElementById('bonusTurnTotal').textContent =
+        bonusState.darts.reduce((s, d) => s + d.score, 0);
+    if (bonusState.darts.length >= 3) {
+        document.getElementById('confirmBonusBtn').disabled = true;
+        document.querySelectorAll('#bonusNumberGrid .number-btn').forEach(b => b.disabled = true);
+    } else {
+        document.getElementById('bonusDartNumber').textContent = bonusState.darts.length + 1;
+        bonusState.selNum = null;
+        document.getElementById('bonusMultiplierSection').style.display = 'none';
+        document.getElementById('confirmBonusBtn').disabled = true;
+        document.querySelectorAll('#bonusNumberGrid .number-btn').forEach(b => b.classList.remove('selected'));
+    }
+}
+
+function confirmBonusDart() {
+    const num = bonusState.selNum;
+    if (num === null) return;
+    const mult = bonusState.selMult;
+    const score = num === 25 ? 25 : num === 50 ? 50 : num * mult;
+    const label = num === 25 ? 'Bull 25' : num === 50 ? 'Bull 50' : ['', 'S', 'D', 'T'][mult] + num;
+    pushBonusDart(score, label);
+}
+
+function selectBonusMiss() {
+    pushBonusDart(0, 'MISS');
+}
+
+function undoBonusDart() {
+    if (!bonusState.darts.length) return;
+    bonusState.darts.pop();
+    document.getElementById('bonusTurnTotal').textContent =
+        bonusState.darts.reduce((s, d) => s + d.score, 0);
+    document.getElementById('bonusDartNumber').textContent = bonusState.darts.length + 1;
+    document.querySelectorAll('#bonusNumberGrid .number-btn').forEach(b => {
+        b.disabled = false;
+        b.classList.remove('selected');
+    });
+    bonusState.selNum = null;
+    document.getElementById('bonusMultiplierSection').style.display = 'none';
+    document.getElementById('confirmBonusBtn').disabled = true;
+    if (!bonusState.darts.length) document.getElementById('undoBonusBtn').disabled = true;
+}
+
+function endBonusTurn() {
+    const c = bonusContender();
+    const total = bonusState.darts.reduce((s, d) => s + d.score, 0);
+    bonusState.totals[c.name] = total;
+    const labels = bonusState.darts.map(d => d.label).join(', ');
+    bonusState.recap.push(`Round ${bonusState.round}: ${c.name} scored ${total}${labels ? ` [${labels}]` : ''}`);
+
+    if (bonusState.currentIndex + 1 < bonusState.active.length) {
+        beginBonusThrow(bonusState.currentIndex + 1);
+        renderBonusHigh3Board();
+        return;
+    }
+
+    // Everyone in this round has thrown — find the top score
+    const results = bonusState.active.map(i => ({
+        i, total: bonusState.totals[bonusState.contenders[i].name] || 0
+    }));
+    const max = Math.max(...results.map(r => r.total));
+    const top = results.filter(r => r.total === max);
+
+    if (top.length === 1) {
+        const name = bonusState.contenders[top[0].i].name;
+        bonusState.recap.push(`${name} takes it with ${max}!`);
+        showBonusWinner(name);
+        return;
+    }
+
+    // Tie — the tied players throw again
+    bonusState.active = top.map(r => r.i);
+    bonusState.round++;
+    const names = bonusState.active.map(i => bonusState.contenders[i].name).join(' and ');
+    bonusState.recap.push(`Tie at ${max} — ${names} throw again!`);
+    beginBonusThrow(0);
+    renderBonusHigh3Board();
+}
+
+// ---- Bull shootout ----
+
+function startBonusBull() {
+    bonusState.active = bonusState.contenders.map((c, i) => i);
+    bonusState.round = 1;
+    bonusState.bullHits = {};
+    bonusState.recap = [];
+    document.getElementById('bullRound').textContent = '1';
+    renderBullList();
+    renderBullRecap();
+    showScreen('bonusBullScreen');
+}
+
+function renderBullList() {
+    document.getElementById('bullList').innerHTML = bonusState.active.map(i => {
+        const name = bonusState.contenders[i].name;
+        const res = bonusState.bullHits[name];
+        return `
+            <div class="player-item">
+                <span>${name}</span>
+                <span style="display: flex; gap: 8px;">
+                    <button class="${res === true ? '' : 'secondary'}" style="width: auto; margin: 0; padding: 12px 16px;" onclick="setBullResult(${i}, true)">🎯 Hit</button>
+                    <button class="${res === false ? 'danger' : 'secondary'}" style="width: auto; margin: 0; padding: 12px 16px;" onclick="setBullResult(${i}, false)">Miss</button>
+                </span>
+            </div>
+        `;
+    }).join('');
+}
+
+function setBullResult(i, hit) {
+    bonusState.bullHits[bonusState.contenders[i].name] = hit;
+    renderBullList();
+}
+
+function renderBullRecap() {
+    document.getElementById('bullRecap').innerHTML = '<div class="label">Rounds</div>' +
+        (bonusState.recap.length
+            ? bonusState.recap.map(r => `<div class="history-item">${r}</div>`).join('')
+            : '<div class="history-item">First round — everyone throws one dart at the bull.</div>');
+}
+
+function endBullRound() {
+    const undecided = bonusState.active.filter(i => bonusState.bullHits[bonusState.contenders[i].name] === undefined);
+    if (undecided.length) {
+        alert('Mark Hit or Miss for every player first.');
+        return;
+    }
+
+    const hits = bonusState.active.filter(i => bonusState.bullHits[bonusState.contenders[i].name] === true);
+    const misses = bonusState.active.filter(i => bonusState.bullHits[bonusState.contenders[i].name] === false);
+    const nameOf = i => bonusState.contenders[i].name;
+
+    if (hits.length === 0) {
+        bonusState.recap.push(`Round ${bonusState.round}: everyone missed — all survive!`);
+    } else if (hits.length === 1) {
+        bonusState.recap.push(`Round ${bonusState.round}: ${nameOf(hits[0])} hit the bull${misses.length ? `, ${misses.map(nameOf).join(' and ')} missed` : ''}.`);
+        showBonusWinner(nameOf(hits[0]));
+        return;
+    } else {
+        if (misses.length) {
+            bonusState.recap.push(`Round ${bonusState.round}: ${misses.map(nameOf).join(' and ')} out — ${hits.map(nameOf).join(' and ')} go again.`);
+        } else {
+            bonusState.recap.push(`Round ${bonusState.round}: everyone hit — go again!`);
+        }
+        bonusState.active = hits;
+    }
+
+    bonusState.round++;
+    bonusState.bullHits = {};
+    document.getElementById('bullRound').textContent = bonusState.round;
+    renderBullList();
+    renderBullRecap();
+}
+
+// ---- Full game for the pint ----
+
+function startBonusFullGame() {
+    const names = bonusState.contenders.map(c => c.name);
+    resetGame();
+    names.forEach(n => gameState.players.push({ name: n, score: 0, turns: 0, totalScored: 0 }));
+    gameState.bonusPint = true;
+    renderSetupPlayers();
+    checkStartButton();
+}
+
+// ===== END BONUS ROUND =====
+
 function resetGame() {
     gameState = {
         gameMode: 'x01',
@@ -2929,7 +3312,8 @@ function resetGame() {
         selectedMultiplier: 1,
         history: [],
         turnStartScore: null,
-        claimedNumbers: []
+        claimedNumbers: [],
+        bonusPint: false
     };
 
     killerState = {
