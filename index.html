@@ -567,6 +567,16 @@
             <button id="doubleInBtn" class="secondary" onclick="toggleDoubleIn(true)">Double In</button>
             <button id="straightInBtn" onclick="toggleDoubleIn(false)">Straight In</button>
         </div>
+
+        <h2>Places</h2>
+        <p class="setup-note">How many finishing places before the game ends. 1 is a classic single winner; pick more and play continues for Second, Third… If only one player is left unplaced, they take the last place automatically.</p>
+        <div class="game-select">
+            <button id="placesBtn1" onclick="selectPlaces(1)">1</button>
+            <button id="placesBtn2" class="secondary" onclick="selectPlaces(2)">2</button>
+            <button id="placesBtn3" class="secondary" onclick="selectPlaces(3)">3</button>
+            <button id="placesBtn4" class="secondary" onclick="selectPlaces(4)">4</button>
+            <button id="placesBtn5" class="secondary" onclick="selectPlaces(5)">5</button>
+        </div>
     </div>
 
     <div id="killerSetup" style="display: none;">
@@ -794,7 +804,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v2.2</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v2.5</span>
 </footer>
 
 <script>
@@ -802,6 +812,8 @@ let gameState = {
     gameMode: 'x01',
     gameType: null,
     doubleIn: false,
+    places: 1,
+    x01Placings: [],
     hasStarted: [],
     players: [],
     currentPlayerIndex: 0,
@@ -812,6 +824,13 @@ let gameState = {
     turnStartScore: null,
     claimedNumbers: []
 };
+
+function selectPlaces(n) {
+    gameState.places = n;
+    for (let i = 1; i <= 5; i++) {
+        document.getElementById('placesBtn' + i).classList.toggle('secondary', i !== n);
+    }
+}
 
 function selectGameMode(mode) {
     gameState.gameMode = mode;
@@ -914,9 +933,12 @@ function startX01Game() {
         p.score = gameState.gameType;
         p.turns = 0;
         p.totalScored = 0;
+        p.finished = false;
+        p.place = null;
     });
     gameState.currentPlayerIndex = 0;
     gameState.history = [];
+    gameState.x01Placings = [];
     gameState.hasStarted = gameState.players.map(() => false);
 
     showScreen('gameScreen');
@@ -1214,10 +1236,8 @@ function confirmDart() {
     const newScore = gameState.turnStartScore - turnTotal;
 
     if (newScore === 0 && isDouble) {
-        // Winner!
-        player.totalScored += turnTotal;
-        player.turns += 1;
-        showWinner();
+        // Finished! Takes the next place
+        finishX01Player(player, turnTotal);
         return;
     }
 
@@ -1350,14 +1370,19 @@ function endTurn() {
     renderHistory();
 }
 
-function showSummary(playerName, scored, newTotal, isBust, bustReason) {
+function showSummary(playerName, scored, newTotal, isBust, bustReason, finishPlace) {
     document.getElementById('summaryPlayer').textContent = playerName;
     document.getElementById('summaryScored').textContent = scored;
     document.getElementById('summaryTotal').textContent = newTotal;
 
     const bustMsg = document.getElementById('bustMessage');
     if (isBust) {
+        bustMsg.className = 'message';
         bustMsg.textContent = `Bust — ${bustReason}. Score returns to previous total.`;
+        bustMsg.style.display = 'block';
+    } else if (finishPlace) {
+        bustMsg.className = 'message success';
+        bustMsg.textContent = `🎯 ${playerName} finishes ${shanghaiOrdinal(finishPlace)}! Game continues for the next place.`;
         bustMsg.style.display = 'block';
     } else {
         bustMsg.style.display = 'none';
@@ -1367,21 +1392,93 @@ function showSummary(playerName, scored, newTotal, isBust, bustReason) {
 }
 
 function nextPlayer() {
-    gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    // Skip players who have already taken a place
+    do {
+        gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    } while (gameState.players[gameState.currentPlayerIndex].finished);
     showScreen('gameScreen');
     startTurn();
 }
 
-function showWinner() {
-    const player = gameState.players[gameState.currentPlayerIndex];
-    document.getElementById('winnerName').textContent = player.name;
+function x01HistoryLine(h) {
+    if (h.auto) return `${h.player}: Takes ${shanghaiOrdinal(h.place)} — last player left`;
+    let line = `${h.player}: ${h.bust ? 'BUST' : `Scored ${h.scored} → ${h.newScore}`}${h.details || ''}`;
+    if (h.place) line += ` — finishes ${shanghaiOrdinal(h.place)}!`;
+    return line;
+}
 
-    // Show game history
+function finishX01Player(player, turnTotal) {
+    player.totalScored += turnTotal;
+    player.turns += 1;
+    player.score = 0;
+    player.finished = true;
+    player.place = gameState.x01Placings.length + 1;
+    gameState.x01Placings.push(player);
+
+    const dartStrings = gameState.currentDarts.map(d => {
+        if (d.number === 0) return 'MISS';
+        if (d.number === 25) return 'Bull 25';
+        if (d.number === 50) return 'Bull 50';
+        return ['', 'S', 'D', 'T'][d.multiplier] + d.number;
+    });
+    gameState.history.unshift({
+        player: player.name,
+        scored: turnTotal,
+        newScore: 0,
+        bust: false,
+        details: ` [${dartStrings.join(', ')}]`,
+        place: player.place
+    });
+    renderHistory();
+
+    const target = Math.min(gameState.places, gameState.players.length);
+    const unfinished = gameState.players.filter(p => !p.finished);
+
+    // All wanted places taken, or nobody left to play
+    if (gameState.x01Placings.length >= target || unfinished.length === 0) {
+        showX01Results();
+        return;
+    }
+
+    // Only one player left unplaced: they take the next place automatically
+    if (unfinished.length === 1) {
+        const last = unfinished[0];
+        last.finished = true;
+        last.place = gameState.x01Placings.length + 1;
+        gameState.x01Placings.push(last);
+        gameState.history.unshift({
+            player: last.name,
+            scored: 0,
+            newScore: last.score,
+            bust: false,
+            details: '',
+            place: last.place,
+            auto: true
+        });
+        showX01Results();
+        return;
+    }
+
+    // Game continues for the remaining places
+    showSummary(player.name, turnTotal, 0, false, '', player.place);
+}
+
+function showX01Results() {
+    const first = gameState.x01Placings[0];
+    document.getElementById('winnerName').textContent = first.name;
+
     const historyEl = document.getElementById('winnerHistory');
-    historyEl.innerHTML = '<div class="label">Game History</div>' +
+    const placingsHtml = gameState.x01Placings.map(p => `
+        <div class="history-item">
+            <strong>${shanghaiOrdinal(p.place)}:</strong> ${p.name}
+        </div>
+    `).join('');
+
+    historyEl.innerHTML = '<div class="label">Final Placings</div>' + placingsHtml +
+        '<div class="label" style="margin-top: 12px;">Game History</div>' +
         gameState.history.map(h => `
             <div class="history-item">
-                ${h.player}: ${h.bust ? 'BUST' : `Scored ${h.scored} → ${h.newScore}`}${h.details || ''}
+                ${x01HistoryLine(h)}
             </div>
         `).join('');
 
@@ -1397,15 +1494,19 @@ function renderScoreboard() {
     const board = document.getElementById('scoreboard');
     board.innerHTML = gameState.players.map((player, i) => {
         const avg = player.turns > 0 ? (player.totalScored / player.turns).toFixed(1) : '0.0';
-        const isCurrent = i === gameState.currentPlayerIndex;
+        const isCurrent = i === gameState.currentPlayerIndex && !player.finished;
+        const finishedStyle = player.finished ? 'opacity: 0.65;' : '';
+        const scoreHtml = player.finished
+            ? `<div class="score-display" style="font-size: 22px; color: #c9a13b;">${shanghaiOrdinal(player.place).toUpperCase()}</div>`
+            : `<div class="score-display">${player.score}</div>`;
 
         return `
-            <div class="player-score ${isCurrent ? 'current' : ''}">
+            <div class="player-score ${isCurrent ? 'current' : ''}" style="${finishedStyle}">
                 <div class="player-info">
                     <div class="player-name">${player.name}</div>
                     <div class="player-avg">Avg: ${avg}</div>
                 </div>
-                <div class="score-display">${player.score}</div>
+                ${scoreHtml}
             </div>
         `;
     }).join('');
@@ -1416,7 +1517,7 @@ function renderHistory() {
     historyEl.innerHTML = '<div class="label">Recent History</div>' +
         gameState.history.slice(0, 5).map(h => `
             <div class="history-item">
-                ${h.player}: ${h.bust ? 'BUST' : `Scored ${h.scored} → ${h.newScore}`}${h.details || ''}
+                ${x01HistoryLine(h)}
             </div>
         `).join('');
 }
@@ -2060,15 +2161,17 @@ function downloadHistory() {
     parts.push(docxPara(docxRun('PLAYERS', { b: 1, sz: 24, color: INK, spacing: 30 }), { before: 120, after: 80 }));
     const playerRows = [];
     if (gameState.gameMode === 'x01') {
-        playerRows.push(docxHeaderRow(['Player', 'Final Score', 'Average / Turn']));
+        playerRows.push(docxHeaderRow(['Player', 'Final Score', 'Average / Turn', 'Result']));
         gameState.players.forEach(p => {
             const avg = p.turns > 0 ? (p.totalScored / p.turns).toFixed(1) : '0.0';
             const isWinner = p.name === winner;
             const fill = isWinner ? 'F3ECD9' : undefined;
+            const result = p.place ? `Finished ${shanghaiOrdinal(p.place)}` : 'Did not place';
             playerRows.push([
                 docxCell(docxRun(p.name + (isWinner ? '  🎯' : ''), { b: isWinner ? 1 : 0, sz: 22, color: INK }), { fill }),
                 docxCell(docxRun(String(p.score), { sz: 22, color: INK }), { fill, align: 'center' }),
-                docxCell(docxRun(avg, { sz: 22, color: INK }), { fill, align: 'center' })
+                docxCell(docxRun(avg, { sz: 22, color: INK }), { fill, align: 'center' }),
+                docxCell(docxRun(result, { b: p.place ? 1 : 0, sz: 20, color: p.place ? GREEN : DIM }), { fill, align: 'center' })
             ]);
         });
     } else if (gameState.gameMode === 'killer') {
@@ -2105,8 +2208,9 @@ function downloadHistory() {
     gameState.history.slice().reverse().forEach((h, i) => {
         let text, color = INK, bold = 0;
         if (gameState.gameMode === 'x01') {
-            text = `${h.player}: ${h.bust ? 'BUST' : `Scored ${h.scored} → ${h.newScore}`}${h.details || ''}`;
+            text = x01HistoryLine(h);
             if (h.bust) { color = RED; bold = 1; }
+            if (h.place) { color = GREEN; bold = 1; }
         } else {
             text = `${h.player}: ${h.action}`;
             if (/ELIMINATED/.test(h.action)) { color = RED; bold = 1; }
@@ -2120,7 +2224,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v2.2', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v2.5', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
@@ -2160,7 +2264,7 @@ function downloadHistory() {
 
 // ===== SHANGHAI GAME FUNCTIONS =====
 
-const SHANGHAI_PLACES = ['First', 'Second', 'Third', 'Fourth'];
+const SHANGHAI_PLACES = ['First', 'Second', 'Third', 'Fourth', 'Fifth'];
 
 function shanghaiOrdinal(place) {
     return SHANGHAI_PLACES[place - 1] || `${place}th`;
@@ -2610,6 +2714,7 @@ function serializeLiveState() {
         if (mode === 'x01') {
             row.score = p.score;
             row.avg = p.turns > 0 ? (p.totalScored / p.turns).toFixed(1) : '0.0';
+            row.place = p.place || 0;
         } else if (mode === 'killer') {
             row.num = p.claimedNumber;
             row.strikes = p.strikes || 0;
@@ -2637,9 +2742,7 @@ function serializeLiveState() {
     }
 
     st.history = gameState.history.slice(0, 30).map(h =>
-        mode === 'x01'
-            ? `${h.player}: ${h.bust ? 'BUST' : `Scored ${h.scored} → ${h.newScore}`}${h.details || ''}`
-            : `${h.player}: ${h.action}`);
+        mode === 'x01' ? x01HistoryLine(h) : `${h.player}: ${h.action}`);
 
     if (screen === 'winnerScreen') st.winner = document.getElementById('winnerName').textContent;
 
@@ -2778,7 +2881,7 @@ function buildMatchRecord() {
         turns: gameState.history.length,
         players: gameState.players.map(p => {
             if (gameState.gameMode === 'x01') {
-                return { name: p.name, score: p.score, avg: p.turns > 0 ? +(p.totalScored / p.turns).toFixed(1) : 0 };
+                return { name: p.name, score: p.score, avg: p.turns > 0 ? +(p.totalScored / p.turns).toFixed(1) : 0, place: p.place || 0 };
             }
             if (gameState.gameMode === 'killer') {
                 return { name: p.name, num: p.claimedNumber, strikes: p.strikes, out: !!p.eliminated };
@@ -2816,6 +2919,8 @@ function resetGame() {
         gameMode: 'x01',
         gameType: null,
         doubleIn: false,
+        places: 1,
+        x01Placings: [],
         hasStarted: [],
         players: [],
         currentPlayerIndex: 0,
@@ -2858,6 +2963,11 @@ function resetGame() {
     // Reset double-in button styles to default (straight in)
     document.getElementById('doubleInBtn').classList.add('secondary');
     document.getElementById('straightInBtn').classList.remove('secondary');
+
+    // Reset places to a single winner
+    for (let i = 1; i <= 5; i++) {
+        document.getElementById('placesBtn' + i).classList.toggle('secondary', i !== 1);
+    }
 
     checkStartButton();
 
