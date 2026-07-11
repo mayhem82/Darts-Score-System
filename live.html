@@ -510,7 +510,7 @@
 
 <footer class="club-footer">
     <a href="index.html">Scoreboard</a> &nbsp;·&nbsp; <a href="rules.html">House Rules</a> &nbsp;·&nbsp; <a href="history.html">Club History</a>
-    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v2.3</div>
+    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v2.4</div>
 </footer>
 
 <!-- End-of-turn quick stats card -->
@@ -636,24 +636,59 @@ function showTurnCard(board, st, headline, next) {
 }
 
 // ---- TV / Big Screen mode ----
+// Built for a phone on the wall, a tablet, or a TV: big-screen layout
+// can auto-start (?tv=1 in the URL, or remembered from last time),
+// and a wake lock keeps the screen from ever going to sleep.
 
-function toggleTv() {
-    const on = !document.body.classList.contains('tv');
+let wakeLock = null;
+
+async function acquireWakeLock() {
+    try {
+        if ('wakeLock' in navigator && !wakeLock) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => { wakeLock = null; });
+        }
+    } catch (e) { /* not supported or denied — nothing to do */ }
+}
+
+function releaseWakeLock() {
+    try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
+}
+
+document.addEventListener('visibilitychange', () => {
+    // Wake locks are dropped when the tab is hidden; re-grab on return
+    if (document.visibilityState === 'visible' && document.body.classList.contains('tv')) {
+        acquireWakeLock();
+    }
+});
+
+function setTv(on, wantFullscreen) {
     document.body.classList.toggle('tv', on);
     document.getElementById('tvBtn').textContent = on ? '↩ Exit Big Screen' : '📺 Big Screen';
-    try {
-        if (on && document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen().catch(() => {});
-        } else if (!on && document.fullscreenElement) {
-            document.exitFullscreen().catch(() => {});
+    if (on) {
+        acquireWakeLock();
+        if (wantFullscreen) {
+            try {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen().catch(() => {});
+                }
+            } catch (e) {}
         }
-    } catch (e) {}
+    } else {
+        releaseWakeLock();
+        try { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); } catch (e) {}
+    }
+}
+
+function toggleTv() {
+    setTv(!document.body.classList.contains('tv'), true);
 }
 
 document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement && document.body.classList.contains('tv')) {
-        document.body.classList.remove('tv');
-        document.getElementById('tvBtn').textContent = '📺 Big Screen';
+    // Leaving fullscreen keeps the big-screen layout; the button (or
+    // the remembered setting) is what turns it off.
+    if (document.fullscreenElement && !document.body.classList.contains('tv')) {
+        setTv(true, false);
     }
 });
 
@@ -885,6 +920,10 @@ const roomParam = (params.get('room') || '').toUpperCase();
 const rooms = roomParam.split(',').map(r => r.trim()).filter(r => r.length >= 4).slice(0, 2);
 if (rooms.length) {
     connectAll(rooms);
+    // Wall-mounted phone/tablet/TV: add &tv=1 to a bookmarked URL to
+    // start straight in Big Screen. Everyone else starts normal and
+    // can toggle Big Screen with the button.
+    if (params.get('tv') === '1') setTv(true, false);
 }
 </script>
 
