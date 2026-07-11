@@ -566,6 +566,18 @@
     <div class="player-list" id="setupPlayerList"></div>
 
     <button onclick="startGame()" id="startGameBtn" disabled>Start Game</button>
+
+    <div class="dart-input" style="margin-top: 30px;">
+        <h2>Live Sharing</h2>
+        <p class="setup-note">Keep score on this device — everyone else watches live on their own phone. Start sharing, then watchers open the Live Scores page and enter the room code.</p>
+        <button class="secondary" onclick="toggleLiveShare()" id="liveShareBtn">Start Live Sharing</button>
+        <div id="liveShareInfo" style="display: none; text-align: center;">
+            <div class="label">Room Code</div>
+            <div id="liveRoomCode" style="font-family: var(--display); font-size: 44px; font-weight: 700; color: #c9a13b; letter-spacing: 0.25em;"></div>
+            <p class="setup-note">Watchers open <a id="liveViewLink" href="live.html" style="color: #c9a13b;">the Live Scores page</a> and enter the code — or send them this link:<br><span id="liveViewUrlText" style="word-break: break-all; font-size: 16px;"></span></p>
+            <div id="liveStatus" class="label"></div>
+        </div>
+    </div>
 </div>
 
 <!-- Game Screen -->
@@ -758,8 +770,9 @@
 </main>
 
 <footer class="club-footer">
-    <a href="rules.html">House Rules &amp; Code of Conduct</a>
-    <span class="version">Bellbrook Darts Club Scoreboard · v1.8</span>
+    <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a>
+    <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v1.9</span>
 </footer>
 
 <script>
@@ -2075,7 +2088,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v1.8', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v1.9', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
@@ -2513,6 +2526,190 @@ function confirmReset() {
         resetGame();
     }
 }
+
+// ===== LIVE SHARING =====
+// One device keeps score; everyone else watches on live.html.
+// Uses a public MQTT broker over websockets (retained messages let
+// late joiners get the current state instantly). ?transport=bc uses
+// a BroadcastChannel instead for same-device testing.
+
+const LIVE_TRANSPORT = new URLSearchParams(location.search).get('transport') || 'mqtt';
+const LIVE_BROKER = 'wss://broker.emqx.io:8084/mqtt';
+
+let liveShare = {
+    active: false,
+    room: null,
+    client: null,
+    channel: null,
+    timer: null,
+    lastPayload: ''
+};
+
+function makeRoomCode() {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+}
+
+function liveTopic(room) {
+    return `bellbrook-darts-club/${room}/state`;
+}
+
+function setLiveStatus(text) {
+    document.getElementById('liveStatus').textContent = text;
+}
+
+function serializeLiveState() {
+    const active = document.querySelector('.screen.active');
+    const screen = active ? active.id : '';
+    const mode = gameState.gameMode;
+    const st = { v: 1, mode: mode, gameType: gameState.gameType, screen: screen };
+
+    st.players = gameState.players.map((p, i) => {
+        const row = { name: p.name, current: i === gameState.currentPlayerIndex };
+        if (mode === 'x01') {
+            row.score = p.score;
+            row.avg = p.turns > 0 ? (p.totalScored / p.turns).toFixed(1) : '0.0';
+        } else if (mode === 'killer') {
+            row.num = p.claimedNumber;
+            row.strikes = p.strikes || 0;
+            row.out = !!p.eliminated;
+        } else {
+            row.num = p.claimedNumber;
+            row.hits = p.shHits ? { s: p.shHits.single, d: p.shHits.double, t: p.shHits.triple } : null;
+            row.place = p.place || 0;
+        }
+        return row;
+    });
+
+    if (mode === 'x01') {
+        st.darts = gameState.currentDarts.map(d =>
+            d.number === 0 ? 'MISS' : d.number === 25 ? 'Bull 25' : d.number === 50 ? 'Bull 50' : ['', 'S', 'D', 'T'][d.multiplier] + d.number);
+        if (screen === 'gameScreen' && gameState.turnStartScore !== null) {
+            st.remaining = gameState.turnStartScore - gameState.currentDarts.reduce((s, d) => s + d.score, 0);
+        }
+    } else if (mode === 'killer') {
+        st.darts = (killerState.currentDarts || []).map(d =>
+            d.number === 0 ? 'MISS' : d.number === 25 ? 'Bull 25' : d.number === 50 ? 'Bull 50' : ['', 'S', 'D', 'T'][d.multiplier] + d.number);
+    } else {
+        st.darts = (shanghaiState.currentDarts || []).map(d =>
+            d.type === 'miss' ? 'MISS' : d.type.charAt(0).toUpperCase() + d.type.slice(1) + (d.wasNew ? '' : ' (repeat)'));
+    }
+
+    st.history = gameState.history.slice(0, 30).map(h =>
+        mode === 'x01'
+            ? `${h.player}: ${h.bust ? 'BUST' : `Scored ${h.scored} → ${h.newScore}`}${h.details || ''}`
+            : `${h.player}: ${h.action}`);
+
+    if (screen === 'winnerScreen') st.winner = document.getElementById('winnerName').textContent;
+
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    st.status =
+        screen === 'setupScreen' ? 'Setting up the next game…' :
+        screen === 'killerSetupScreen' || screen === 'shanghaiSetupScreen' ? 'Claiming numbers…' :
+        screen === 'summaryScreen' ? 'Turn complete' :
+        screen === 'winnerScreen' ? `${st.winner} wins!` :
+        currentPlayer ? `${currentPlayer.name}'s turn` : '';
+
+    return st;
+}
+
+function livePublish(force) {
+    if (!liveShare.active) return;
+    const payload = JSON.stringify(serializeLiveState());
+    if (!force && payload === liveShare.lastPayload) return;
+    liveShare.lastPayload = payload;
+    const msg = payload.slice(0, -1) + `,"ts":${Date.now()}}`;
+    try {
+        if (liveShare.client) {
+            liveShare.client.publish(liveTopic(liveShare.room), msg, { retain: true, qos: 0 });
+        } else if (liveShare.channel) {
+            liveShare.channel.postMessage(msg);
+        }
+    } catch (e) { /* keep scoring even if the connection hiccups */ }
+}
+
+function loadMqttLib() {
+    return new Promise((resolve, reject) => {
+        if (window.mqtt) return resolve();
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/mqtt@5/dist/mqtt.min.js';
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('No internet — live sharing needs a connection.'));
+        document.head.appendChild(s);
+    });
+}
+
+async function toggleLiveShare() {
+    const btn = document.getElementById('liveShareBtn');
+
+    if (liveShare.active) {
+        liveShare.active = false;
+        clearInterval(liveShare.timer);
+        try {
+            const bye = JSON.stringify({ v: 1, ended: true, ts: Date.now() });
+            if (liveShare.client) {
+                liveShare.client.publish(liveTopic(liveShare.room), bye, { retain: true });
+                const c = liveShare.client;
+                liveShare.client = null;
+                setTimeout(() => { try { c.end(true); } catch (e) {} }, 400);
+            }
+            if (liveShare.channel) {
+                liveShare.channel.postMessage(bye);
+                liveShare.channel.close();
+                liveShare.channel = null;
+            }
+        } catch (e) {}
+        document.getElementById('liveShareInfo').style.display = 'none';
+        document.getElementById('liveFooterRoom').textContent = '';
+        btn.textContent = 'Start Live Sharing';
+        return;
+    }
+
+    const room = makeRoomCode();
+    liveShare.room = room;
+    liveShare.lastPayload = '';
+    btn.disabled = true;
+    document.getElementById('liveShareInfo').style.display = 'block';
+    document.getElementById('liveRoomCode').textContent = room;
+    setLiveStatus('Connecting…');
+
+    const viewUrl = new URL('live.html', location.href);
+    viewUrl.searchParams.set('room', room);
+    if (LIVE_TRANSPORT !== 'mqtt') viewUrl.searchParams.set('transport', LIVE_TRANSPORT);
+    document.getElementById('liveViewLink').href = viewUrl.toString();
+    document.getElementById('liveViewUrlText').textContent = viewUrl.toString();
+
+    try {
+        if (LIVE_TRANSPORT === 'bc') {
+            liveShare.channel = new BroadcastChannel('bbdc-live-' + room);
+            liveShare.channel.onmessage = (e) => {
+                if (String(e.data).includes('"hello"')) livePublish(true);
+            };
+            setLiveStatus('LIVE — sharing');
+        } else {
+            await loadMqttLib();
+            const client = window.mqtt.connect(LIVE_BROKER, { connectTimeout: 10000, reconnectPeriod: 3000 });
+            liveShare.client = client;
+            client.on('connect', () => { setLiveStatus('LIVE — sharing'); livePublish(true); });
+            client.on('reconnect', () => setLiveStatus('Reconnecting…'));
+            client.on('error', () => setLiveStatus('Connection trouble — retrying…'));
+        }
+        liveShare.active = true;
+        liveShare.timer = setInterval(() => livePublish(false), 1500);
+        btn.textContent = 'Stop Live Sharing';
+        document.getElementById('liveFooterRoom').textContent = '🔴 LIVE · Room ' + room;
+        livePublish(true);
+    } catch (err) {
+        setLiveStatus(err.message || 'Could not start live sharing.');
+        document.getElementById('liveShareInfo').style.display = 'block';
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// ===== END LIVE SHARING =====
 
 function resetGame() {
     gameState = {

@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Scores — Bellbrook Darts Club</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --timber: #17120d;
+            --walnut: #262019;
+            --walnut-deep: #1d1812;
+            --chalk: #ede3cc;
+            --chalk-dim: #b9ad92;
+            --brass: #c9a13b;
+            --brass-deep: #a37f24;
+            --board-red: #b23a2e;
+            --board-green: #2f6e4f;
+            --board-green-deep: #24543d;
+            --display: 'Oswald', 'Arial Narrow', system-ui, sans-serif;
+            --body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--body);
+            background: var(--timber);
+            background-image:
+                radial-gradient(ellipse at 50% -10%, rgba(201, 161, 59, 0.08) 0%, transparent 55%),
+                radial-gradient(circle at 15% 90%, rgba(47, 110, 79, 0.05) 0%, transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(178, 58, 46, 0.05) 0%, transparent 45%);
+            background-attachment: fixed;
+            color: var(--chalk);
+            min-height: 100vh;
+            padding: 15px;
+            font-size: 20px;
+        }
+
+        .club-header {
+            text-align: center;
+            padding: 18px 10px 16px;
+            margin: 0 auto 10px;
+            border-bottom: 3px double var(--brass);
+            max-width: 560px;
+        }
+
+        .club-header .club-mark { font-size: 30px; line-height: 1; margin-bottom: 6px; }
+
+        .club-header .club-name {
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 30px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .club-header .club-sub {
+            font-family: var(--display);
+            font-weight: 500;
+            font-size: 15px;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+            color: var(--brass);
+            margin-top: 6px;
+        }
+
+        main { max-width: 560px; margin: 0 auto; }
+
+        h1 {
+            text-align: center;
+            margin: 22px 0;
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 34px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        h2 {
+            text-align: center;
+            margin: 20px 0;
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 21px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        button {
+            background: var(--brass);
+            color: #1c1608;
+            border: none;
+            border-bottom: 3px solid var(--brass-deep);
+            padding: 18px 24px;
+            font-family: var(--display);
+            font-size: 19px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            margin: 12px 0;
+        }
+
+        button:active { background: var(--brass-deep); }
+
+        input {
+            width: 100%;
+            padding: 18px;
+            font-size: 24px;
+            font-family: var(--display);
+            letter-spacing: 0.3em;
+            text-align: center;
+            text-transform: uppercase;
+            border: 1px solid rgba(201, 161, 59, 0.4);
+            background: var(--walnut-deep);
+            color: var(--chalk);
+            border-radius: 6px;
+            margin: 12px 0;
+        }
+
+        input:focus { outline: 2px solid var(--brass); outline-offset: 1px; }
+
+        .setup-note {
+            text-align: center;
+            color: var(--chalk-dim);
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+
+        .live-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 15px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            background: var(--walnut);
+            border: 1px solid rgba(201, 161, 59, 0.4);
+            border-radius: 999px;
+            padding: 8px 16px;
+            color: var(--chalk-dim);
+        }
+
+        .live-pill .dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: #777;
+        }
+
+        .live-pill.on { color: var(--chalk); border-color: var(--board-red); }
+        .live-pill.on .dot {
+            background: var(--board-red);
+            animation: pulse 1.6s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(178, 58, 46, 0.6); }
+            50% { box-shadow: 0 0 0 7px rgba(178, 58, 46, 0); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .live-pill.on .dot { animation: none; }
+        }
+
+        .status-line {
+            text-align: center;
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 26px;
+            letter-spacing: 0.06em;
+            margin: 18px 0;
+            color: var(--chalk);
+            text-wrap: balance;
+        }
+
+        .remaining-score {
+            text-align: center;
+            font-family: var(--display);
+            font-variant-numeric: tabular-nums;
+            font-size: 72px;
+            font-weight: 700;
+            color: var(--chalk);
+            margin: 20px 0;
+            text-shadow: 0 0 30px rgba(201, 161, 59, 0.25);
+            background: var(--board-green-deep);
+            border: 2px solid var(--brass);
+            padding: 18px 25px;
+            border-radius: 10px;
+            line-height: 1;
+        }
+
+        .scoreboard {
+            background: var(--walnut);
+            border: 1px solid rgba(201, 161, 59, 0.3);
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .player-score {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin: 5px 0;
+            background: var(--timber);
+            border-radius: 4px;
+            border-left: 4px solid transparent;
+        }
+
+        .player-score.current {
+            background: var(--board-green-deep);
+            border-left-color: var(--brass);
+        }
+
+        .player-score.current::before { content: '▶ '; color: var(--brass); }
+
+        .player-info { flex: 1; }
+        .player-name { font-weight: 600; font-size: 20px; }
+        .player-avg { font-size: 17px; color: var(--chalk-dim); margin-top: 4px; }
+
+        .score-display {
+            font-family: var(--display);
+            font-variant-numeric: tabular-nums;
+            font-size: 40px;
+            font-weight: 700;
+            color: var(--chalk);
+        }
+
+        .panel {
+            background: var(--walnut-deep);
+            border: 1px solid rgba(201, 161, 59, 0.25);
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+
+        .label {
+            font-family: var(--display);
+            font-weight: 500;
+            font-size: 16px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--chalk-dim);
+            margin-bottom: 8px;
+        }
+
+        .dart-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(201, 161, 59, 0.15);
+        }
+
+        .dart-row:last-child { border-bottom: none; }
+
+        .history-item {
+            padding: 10px;
+            border-bottom: 1px solid rgba(201, 161, 59, 0.15);
+            font-size: 19px;
+        }
+
+        .history-item:last-child { border-bottom: none; }
+
+        .winner-banner {
+            text-align: center;
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 40px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--brass);
+            background: var(--walnut);
+            border: 2px solid var(--brass);
+            border-radius: 10px;
+            padding: 25px;
+            margin: 20px 0;
+            text-shadow: 0 0 20px rgba(201, 161, 59, 0.35);
+        }
+
+        .updated {
+            text-align: center;
+            font-size: 15px;
+            color: var(--chalk-dim);
+            margin: 15px 0;
+        }
+
+        .club-footer {
+            text-align: center;
+            max-width: 560px;
+            margin: 30px auto 10px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(201, 161, 59, 0.35);
+            font-size: 15px;
+            letter-spacing: 0.1em;
+            color: var(--chalk-dim);
+        }
+
+        .club-footer a {
+            color: var(--brass);
+            text-decoration: none;
+            font-family: var(--display);
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .center { text-align: center; }
+    </style>
+</head>
+<body>
+
+<header class="club-header">
+    <div class="club-mark">🎯</div>
+    <div class="club-name">Bellbrook Darts Club</div>
+    <div class="club-sub">Bellbrook Hotel · Macleay Valley</div>
+</header>
+
+<main>
+
+<h1>Live Scores</h1>
+
+<!-- Join screen -->
+<div id="joinScreen">
+    <p class="setup-note">The scorer's phone shares the game live. Enter the room code shown on the scorer's screen.</p>
+    <input type="text" id="roomInput" placeholder="ROOM CODE" maxlength="5" autocapitalize="characters"
+           onkeypress="if(event.key==='Enter') joinRoom()">
+    <button onclick="joinRoom()">Watch Live</button>
+    <div class="setup-note" id="joinError"></div>
+</div>
+
+<!-- Live screen -->
+<div id="liveScreen" style="display: none;">
+    <div class="center">
+        <span class="live-pill" id="livePill"><span class="dot"></span><span id="pillText">Connecting…</span></span>
+    </div>
+
+    <div id="winnerBanner" class="winner-banner" style="display: none;"></div>
+
+    <div class="status-line" id="statusLine"></div>
+
+    <div class="remaining-score" id="remainingScore" style="display: none;"></div>
+
+    <div class="scoreboard" id="scoreboard"></div>
+
+    <div class="panel" id="dartsPanel" style="display: none;">
+        <div class="label">This Turn</div>
+        <div id="dartsList"></div>
+    </div>
+
+    <div class="panel" id="historyPanel" style="display: none;">
+        <div class="label">Shot History</div>
+        <div id="historyList"></div>
+    </div>
+
+    <div class="updated" id="updatedLine"></div>
+</div>
+
+</main>
+
+<footer class="club-footer">
+    <a href="index.html">Scoreboard</a> &nbsp;·&nbsp; <a href="rules.html">House Rules</a>
+    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v1.9</div>
+</footer>
+
+<script>
+const LIVE_BROKER = 'wss://broker.emqx.io:8084/mqtt';
+const params = new URLSearchParams(location.search);
+const TRANSPORT = params.get('transport') || 'mqtt';
+
+let lastTs = null;
+let client = null;
+let channel = null;
+
+function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function setPill(on, text) {
+    const pill = document.getElementById('livePill');
+    pill.classList.toggle('on', on);
+    document.getElementById('pillText').textContent = text;
+}
+
+function joinRoom() {
+    const code = document.getElementById('roomInput').value.trim().toUpperCase();
+    if (code.length < 4) {
+        document.getElementById('joinError').textContent = 'Enter the 5-character room code from the scorer\'s screen.';
+        return;
+    }
+    const url = new URL(location.href);
+    url.searchParams.set('room', code);
+    location.href = url.toString();
+}
+
+function connect(room) {
+    document.getElementById('joinScreen').style.display = 'none';
+    document.getElementById('liveScreen').style.display = 'block';
+    setPill(false, 'Connecting…');
+
+    if (TRANSPORT === 'bc') {
+        channel = new BroadcastChannel('bbdc-live-' + room);
+        channel.onmessage = e => handleMessage(String(e.data));
+        channel.postMessage(JSON.stringify({ hello: true }));
+        setPill(true, 'Live · Room ' + room);
+        return;
+    }
+
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/mqtt@5/dist/mqtt.min.js';
+    s.onload = () => {
+        client = window.mqtt.connect(LIVE_BROKER, { connectTimeout: 10000, reconnectPeriod: 3000 });
+        client.on('connect', () => {
+            setPill(true, 'Live · Room ' + room);
+            client.subscribe(`bellbrook-darts-club/${room}/state`);
+        });
+        client.on('message', (t, msg) => handleMessage(msg.toString()));
+        client.on('reconnect', () => setPill(false, 'Reconnecting…'));
+        client.on('error', () => setPill(false, 'Connection trouble…'));
+    };
+    s.onerror = () => setPill(false, 'No internet — can\'t connect');
+    document.head.appendChild(s);
+}
+
+function handleMessage(raw) {
+    let st;
+    try { st = JSON.parse(raw); } catch (e) { return; }
+    if (st.hello) return;
+    if (st.ended) {
+        setPill(false, 'Sharing ended');
+        document.getElementById('statusLine').textContent = 'The scorer has stopped sharing.';
+        return;
+    }
+    lastTs = st.ts || Date.now();
+    render(st);
+}
+
+function render(st) {
+    const modeLabel = st.mode === 'x01' ? (st.gameType || 'x01') :
+                      st.mode === 'killer' ? 'Killer' : 'Shanghai';
+
+    // Winner banner
+    const banner = document.getElementById('winnerBanner');
+    if (st.winner) {
+        banner.textContent = `🎯 ${st.winner} WINS! 🎯`;
+        banner.style.display = 'block';
+    } else {
+        banner.style.display = 'none';
+    }
+
+    document.getElementById('statusLine').textContent = `${modeLabel} — ${st.status || ''}`;
+
+    // Big remaining score for x01
+    const rem = document.getElementById('remainingScore');
+    if (st.remaining !== undefined && !st.winner) {
+        rem.textContent = st.remaining;
+        rem.style.display = 'block';
+    } else {
+        rem.style.display = 'none';
+    }
+
+    // Scoreboard
+    const PLACES = ['First', 'Second', 'Third', 'Fourth'];
+    const board = document.getElementById('scoreboard');
+    board.innerHTML = (st.players || []).map(p => {
+        let sub = '', big = '', extraStyle = '';
+        if (st.mode === 'x01') {
+            sub = `Avg: ${p.avg}`;
+            big = p.score;
+        } else if (st.mode === 'killer') {
+            const numText = p.num === 25 ? 'Bull 25' : p.num === 50 ? 'Bull 50' : (p.num === null || p.num === undefined ? 'not claimed' : p.num);
+            sub = `Number: ${numText} · Strikes: ${p.strikes}/5`;
+            big = p.out ? 'OUT' : '';
+            if (p.out) extraStyle = 'opacity: 0.5; text-decoration: line-through;';
+        } else {
+            const numText = (p.num === null || p.num === undefined) ? 'not claimed' : p.num;
+            if (p.place) {
+                sub = `Number: ${numText}`;
+                big = (PLACES[p.place - 1] || p.place).toUpperCase();
+                extraStyle = 'opacity: 0.75;';
+            } else if (p.hits) {
+                const seg = v => v ? '✓' : '—';
+                sub = `Number: ${numText} · S ${seg(p.hits.s)} · D ${seg(p.hits.d)} · T ${seg(p.hits.t)}`;
+            } else {
+                sub = `Number: ${numText}`;
+            }
+        }
+        const bigStyle = (st.mode !== 'x01') ? 'font-size: 22px; color: #c9a13b;' : '';
+        return `
+            <div class="player-score ${p.current && !st.winner ? 'current' : ''}" style="${extraStyle}">
+                <div class="player-info">
+                    <div class="player-name">${esc(p.name)}</div>
+                    <div class="player-avg">${esc(sub)}</div>
+                </div>
+                <div class="score-display" style="${bigStyle}">${esc(big)}</div>
+            </div>
+        `;
+    }).join('');
+
+    // Current darts
+    const dartsPanel = document.getElementById('dartsPanel');
+    if (st.darts && st.darts.length && !st.winner) {
+        document.getElementById('dartsList').innerHTML = st.darts.map((d, i) =>
+            `<div class="dart-row"><span>Dart ${i + 1}</span><span>${esc(d)}</span></div>`).join('');
+        dartsPanel.style.display = 'block';
+    } else {
+        dartsPanel.style.display = 'none';
+    }
+
+    // History
+    const histPanel = document.getElementById('historyPanel');
+    if (st.history && st.history.length) {
+        document.getElementById('historyList').innerHTML = st.history.map(h =>
+            `<div class="history-item">${esc(h)}</div>`).join('');
+        histPanel.style.display = 'block';
+    } else {
+        histPanel.style.display = 'none';
+    }
+}
+
+setInterval(() => {
+    if (!lastTs) return;
+    const secs = Math.max(0, Math.round((Date.now() - lastTs) / 1000));
+    document.getElementById('updatedLine').textContent =
+        secs < 5 ? 'Updated just now' : `Updated ${secs}s ago`;
+}, 1000);
+
+const room = (params.get('room') || '').toUpperCase();
+if (room) {
+    connect(room);
+}
+</script>
+
+</body>
+</html>
