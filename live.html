@@ -483,12 +483,15 @@
 
 <!-- Join screen -->
 <div id="joinScreen">
-    <p class="setup-note">The scorer's phone shares the game live. Enter the room code shown on the scorer's screen. Two boards going? Enter both codes.</p>
-    <input type="text" id="roomInput" placeholder="BOARD 1 CODE" maxlength="5" autocapitalize="characters" autofocus
+    <p class="setup-note">The scorer's phone shares the game live. Enter the room code shown on the scorer's screen.</p>
+    <input type="text" id="roomInput" placeholder="ROOM CODE" maxlength="5" autocapitalize="characters" autofocus
            onkeypress="if(event.key==='Enter') joinRoom()">
-    <input type="text" id="roomInput2" placeholder="BOARD 2 CODE (OPTIONAL)" maxlength="5" autocapitalize="characters"
-           onkeypress="if(event.key==='Enter') joinRoom()">
+    <div id="secondBoard" style="display: none;">
+        <input type="text" id="roomInput2" placeholder="BOARD 2 CODE" maxlength="5" autocapitalize="characters"
+               onkeypress="if(event.key==='Enter') joinRoom()">
+    </div>
     <button onclick="joinRoom()">Watch Live</button>
+    <p class="setup-note" style="margin: 5px 0;"><a href="#" id="addBoardLink" onclick="toggleSecondBoard(); return false;" style="color: #c9a13b;">+ Two boards going? Add a second room code</a></p>
     <div class="setup-note" id="joinError"></div>
     <p class="setup-note">Keeping score on this phone instead? <a href="index.html" style="color: #c9a13b;">Go to the Scoreboard</a>.</p>
 </div>
@@ -507,7 +510,7 @@
 
 <footer class="club-footer">
     <a href="index.html">Scoreboard</a> &nbsp;·&nbsp; <a href="rules.html">House Rules</a> &nbsp;·&nbsp; <a href="history.html">Club History</a>
-    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v2.2</div>
+    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v2.3</div>
 </footer>
 
 <!-- End-of-turn quick stats card -->
@@ -538,6 +541,16 @@ let turnCardTimer = null;
 
 function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function toggleSecondBoard() {
+    const box = document.getElementById('secondBoard');
+    const on = box.style.display === 'none';
+    box.style.display = on ? 'block' : 'none';
+    document.getElementById('addBoardLink').textContent =
+        on ? '− Back to a single board' : '+ Two boards going? Add a second room code';
+    if (on) document.getElementById('roomInput2').focus();
+    else document.getElementById('roomInput2').value = '';
 }
 
 function joinRoom() {
