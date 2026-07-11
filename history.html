@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Club History — Bellbrook Darts Club</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --timber: #17120d;
+            --walnut: #262019;
+            --walnut-deep: #1d1812;
+            --chalk: #ede3cc;
+            --chalk-dim: #b9ad92;
+            --brass: #c9a13b;
+            --brass-deep: #a37f24;
+            --board-red: #b23a2e;
+            --board-green: #2f6e4f;
+            --board-green-deep: #24543d;
+            --display: 'Oswald', 'Arial Narrow', system-ui, sans-serif;
+            --body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--body);
+            background: var(--timber);
+            background-image:
+                radial-gradient(ellipse at 50% -10%, rgba(201, 161, 59, 0.08) 0%, transparent 55%),
+                radial-gradient(circle at 15% 90%, rgba(47, 110, 79, 0.05) 0%, transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(178, 58, 46, 0.05) 0%, transparent 45%);
+            background-attachment: fixed;
+            color: var(--chalk);
+            min-height: 100vh;
+            padding: 15px;
+            font-size: 20px;
+            line-height: 1.5;
+        }
+
+        .club-header {
+            text-align: center;
+            padding: 18px 10px 16px;
+            margin: 0 auto 10px;
+            border-bottom: 3px double var(--brass);
+            max-width: 620px;
+        }
+
+        .club-header .club-mark { font-size: 30px; line-height: 1; margin-bottom: 6px; }
+
+        .club-header .club-name {
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 30px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .club-header .club-sub {
+            font-family: var(--display);
+            font-weight: 500;
+            font-size: 15px;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+            color: var(--brass);
+            margin-top: 6px;
+        }
+
+        main { max-width: 620px; margin: 0 auto; }
+
+        h1 {
+            text-align: center;
+            margin: 22px 0 8px;
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 34px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .intro {
+            text-align: center;
+            color: var(--chalk-dim);
+            margin: 0 auto 20px;
+            max-width: 48ch;
+        }
+
+        section {
+            background: var(--walnut);
+            border: 1px solid rgba(201, 161, 59, 0.3);
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        h2 {
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 22px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--brass);
+            border-bottom: 1px solid rgba(201, 161, 59, 0.35);
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-variant-numeric: tabular-nums;
+        }
+
+        th {
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 15px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--chalk-dim);
+            text-align: left;
+            padding: 8px 8px;
+            border-bottom: 2px solid rgba(201, 161, 59, 0.4);
+        }
+
+        td {
+            padding: 9px 8px;
+            border-bottom: 1px solid rgba(201, 161, 59, 0.15);
+            font-size: 18px;
+        }
+
+        tr:last-child td { border-bottom: none; }
+
+        .num { text-align: center; }
+
+        .match-item {
+            padding: 12px 4px;
+            border-bottom: 1px solid rgba(201, 161, 59, 0.15);
+        }
+
+        .match-item:last-child { border-bottom: none; }
+
+        .match-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .match-game {
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 19px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .match-date { color: var(--chalk-dim); font-size: 16px; }
+
+        .match-detail { color: var(--chalk-dim); font-size: 17px; margin-top: 4px; }
+
+        .match-detail .win { color: var(--brass); font-weight: 600; }
+
+        .src-tag {
+            display: inline-block;
+            font-family: var(--display);
+            font-size: 12px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            border-radius: 3px;
+            padding: 1px 7px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        .src-club { background: var(--board-green-deep); border: 1px solid var(--board-green); }
+        .src-device { background: var(--walnut-deep); border: 1px solid rgba(201, 161, 59, 0.4); color: var(--chalk-dim); }
+
+        .empty-note { color: var(--chalk-dim); text-align: center; padding: 10px 0; }
+
+        .club-footer {
+            text-align: center;
+            max-width: 620px;
+            margin: 30px auto 10px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(201, 161, 59, 0.35);
+            font-size: 15px;
+            letter-spacing: 0.1em;
+            color: var(--chalk-dim);
+        }
+
+        .club-footer a {
+            color: var(--brass);
+            text-decoration: none;
+            font-family: var(--display);
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .table-scroll { overflow-x: auto; }
+    </style>
+</head>
+<body>
+
+<header class="club-header">
+    <div class="club-mark">🎯</div>
+    <div class="club-name">Bellbrook Darts Club</div>
+    <div class="club-sub">Bellbrook Hotel · Macleay Valley</div>
+</header>
+
+<main>
+
+<h1>Club History</h1>
+<p class="intro">Every game finished on this device, plus games published to the club record. <span class="src-tag src-club">Club</span> games are visible to everyone; <span class="src-tag src-device">This device</span> games live only in this browser until published.</p>
+
+<section>
+    <h2>Player Ladder</h2>
+    <div class="table-scroll">
+        <table id="ladder">
+            <tr><th>Player</th><th class="num">Games</th><th class="num">Wins</th><th class="num">Win %</th><th class="num">Best x01 Avg</th><th class="num">Last 5 x01 Avg</th></tr>
+        </table>
+    </div>
+    <div class="empty-note" id="ladderEmpty" style="display: none;">No games recorded yet — finish a game on the scoreboard and it'll appear here.</div>
+</section>
+
+<section>
+    <h2>Recent Matches</h2>
+    <div id="matches"></div>
+    <div class="empty-note" id="matchesEmpty" style="display: none;">No matches yet.</div>
+</section>
+
+</main>
+
+<footer class="club-footer">
+    <a href="index.html">Scoreboard</a> &nbsp;·&nbsp; <a href="rules.html">House Rules</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a>
+    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v2.0</div>
+</footer>
+
+<script>
+const REPO_API = 'https://api.github.com/repos/mayhem82/Darts-Score-System/contents/matches';
+
+function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function localMatches() {
+    try {
+        return (JSON.parse(localStorage.getItem('bbdc-matches') || '[]')).map(m => ({ ...m, src: 'device' }));
+    } catch (e) { return []; }
+}
+
+async function repoMatches() {
+    try {
+        const res = await fetch(REPO_API, { headers: { 'Accept': 'application/vnd.github+json' } });
+        if (!res.ok) return [];
+        const files = (await res.json()).filter(f => f.name.endsWith('.json')).slice(-100);
+        const recs = await Promise.all(files.map(async f => {
+            try {
+                const r = await fetch(f.download_url);
+                if (!r.ok) return null;
+                const m = await r.json();
+                return { ...m, src: 'club' };
+            } catch (e) { return null; }
+        }));
+        return recs.filter(Boolean);
+    } catch (e) { return []; }
+}
+
+function fmtDate(ts) {
+    return new Date(ts).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) +
+        ' ' + new Date(ts).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+}
+
+function render(all) {
+    // Dedupe: a device match that was also published to the club shares the same ts
+    const seen = new Set();
+    const matches = [];
+    // club copies win over device copies
+    all.sort((a, b) => (a.src === 'club' ? -1 : 1) - (b.src === 'club' ? -1 : 1));
+    all.forEach(m => {
+        if (!m || !m.ts || seen.has(m.ts)) return;
+        seen.add(m.ts);
+        matches.push(m);
+    });
+    matches.sort((a, b) => b.ts - a.ts);
+
+    // Player ladder
+    const stats = {};
+    matches.forEach(m => {
+        (m.players || []).forEach(p => {
+            const s = stats[p.name] = stats[p.name] || { games: 0, wins: 0, avgs: [] };
+            s.games++;
+            if (p.name === m.winner) s.wins++;
+            if (typeof p.avg === 'number' && p.avg > 0) s.avgs.push({ ts: m.ts, avg: p.avg });
+        });
+    });
+
+    const ladder = document.getElementById('ladder');
+    const names = Object.keys(stats).sort((a, b) =>
+        stats[b].wins - stats[a].wins || stats[b].games - stats[a].games || a.localeCompare(b));
+
+    if (!names.length) {
+        document.getElementById('ladderEmpty').style.display = 'block';
+        document.getElementById('matchesEmpty').style.display = 'block';
+        return;
+    }
+
+    names.forEach(name => {
+        const s = stats[name];
+        const winPct = s.games ? Math.round(100 * s.wins / s.games) : 0;
+        const best = s.avgs.length ? Math.max(...s.avgs.map(a => a.avg)).toFixed(1) : '—';
+        const recent = s.avgs.sort((a, b) => b.ts - a.ts).slice(0, 5);
+        const last5 = recent.length ? (recent.reduce((t, a) => t + a.avg, 0) / recent.length).toFixed(1) : '—';
+        const row = ladder.insertRow();
+        row.innerHTML = `<td>${esc(name)}</td><td class="num">${s.games}</td><td class="num">${s.wins}</td>` +
+            `<td class="num">${winPct}%</td><td class="num">${best}</td><td class="num">${last5}</td>`;
+    });
+
+    // Matches list
+    const box = document.getElementById('matches');
+    box.innerHTML = matches.slice(0, 50).map(m => {
+        const detail = (m.players || []).map(p => {
+            if (typeof p.score === 'number') return `${p.name} ${p.score}${p.avg ? ` (avg ${p.avg})` : ''}`;
+            if (typeof p.strikes === 'number') return `${p.name} ${p.out ? 'out' : 'won'} ${p.strikes}/5`;
+            if (p.place) return `${p.name} ${['1st','2nd','3rd','4th'][p.place - 1] || p.place + 'th'}`;
+            return p.name;
+        }).join(' · ');
+        return `
+            <div class="match-item">
+                <div class="match-head">
+                    <span class="match-game">${esc(m.game)}<span class="src-tag src-${m.src}">${m.src === 'club' ? 'Club' : 'This device'}</span></span>
+                    <span class="match-date">${fmtDate(m.ts)}</span>
+                </div>
+                <div class="match-detail"><span class="win">🎯 ${esc(m.winner)}</span> — ${esc(detail)}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+(async () => {
+    const local = localMatches();
+    render(local); // instant, then refresh once club records arrive
+    const club = await repoMatches();
+    if (club.length) {
+        document.getElementById('ladder').innerHTML =
+            '<tr><th>Player</th><th class="num">Games</th><th class="num">Wins</th><th class="num">Win %</th><th class="num">Best x01 Avg</th><th class="num">Last 5 x01 Avg</th></tr>';
+        render(local.concat(club));
+    }
+})();
+</script>
+
+</body>
+</html>

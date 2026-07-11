@@ -648,6 +648,8 @@
         <div class="history" id="winnerHistory" style="max-height: 300px; margin: 20px 0;"></div>
 
         <button onclick="downloadHistory()">Download Game History</button>
+        <button class="secondary" onclick="saveMatchToRepo()">Publish to Club History</button>
+        <p class="setup-note" style="margin: 5px 0; font-size: 15px;">This game is already saved on this device — see <a href="history.html" style="color: #c9a13b;">Club History</a>. Publishing puts it on the club site for everyone (needs the club GitHub login).</p>
         <button onclick="newMatch()">Start New Match</button>
     </div>
 </div>
@@ -770,9 +772,9 @@
 </main>
 
 <footer class="club-footer">
-    <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a>
+    <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v1.9</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v2.0</span>
 </footer>
 
 <script>
@@ -1363,6 +1365,7 @@ function showWinner() {
             </div>
         `).join('');
 
+    saveMatchLocally();
     showScreen('winnerScreen');
 }
 
@@ -1906,6 +1909,7 @@ function showKillerWinner(player) {
             </div>
         `).join('');
 
+    saveMatchLocally();
     showScreen('winnerScreen');
 }
 
@@ -2088,7 +2092,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v1.9', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v2.0', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
@@ -2516,6 +2520,7 @@ function showShanghaiResults() {
             </div>
         `).join('');
 
+    saveMatchLocally();
     showScreen('winnerScreen');
 }
 
@@ -2534,12 +2539,18 @@ function confirmReset() {
 // a BroadcastChannel instead for same-device testing.
 
 const LIVE_TRANSPORT = new URLSearchParams(location.search).get('transport') || 'mqtt';
-const LIVE_BROKER = 'wss://broker.emqx.io:8084/mqtt';
+// Publish through several public relays at once so viewers connect to
+// whichever one works from their network.
+const LIVE_BROKERS = [
+    'wss://broker.emqx.io:8084/mqtt',
+    'wss://broker.hivemq.com:8884/mqtt',
+    'wss://test.mosquitto.org:8081/mqtt'
+];
 
 let liveShare = {
     active: false,
     room: null,
-    client: null,
+    clients: [],
     channel: null,
     timer: null,
     lastPayload: ''
@@ -2622,9 +2633,10 @@ function livePublish(force) {
     liveShare.lastPayload = payload;
     const msg = payload.slice(0, -1) + `,"ts":${Date.now()}}`;
     try {
-        if (liveShare.client) {
-            liveShare.client.publish(liveTopic(liveShare.room), msg, { retain: true, qos: 0 });
-        } else if (liveShare.channel) {
+        liveShare.clients.forEach(c => {
+            if (c.connected) c.publish(liveTopic(liveShare.room), msg, { retain: true, qos: 0 });
+        });
+        if (liveShare.channel) {
             liveShare.channel.postMessage(msg);
         }
     } catch (e) { /* keep scoring even if the connection hiccups */ }
@@ -2649,12 +2661,12 @@ async function toggleLiveShare() {
         clearInterval(liveShare.timer);
         try {
             const bye = JSON.stringify({ v: 1, ended: true, ts: Date.now() });
-            if (liveShare.client) {
-                liveShare.client.publish(liveTopic(liveShare.room), bye, { retain: true });
-                const c = liveShare.client;
-                liveShare.client = null;
+            const clients = liveShare.clients;
+            liveShare.clients = [];
+            clients.forEach(c => {
+                try { if (c.connected) c.publish(liveTopic(liveShare.room), bye, { retain: true }); } catch (e) {}
                 setTimeout(() => { try { c.end(true); } catch (e) {} }, 400);
-            }
+            });
             if (liveShare.channel) {
                 liveShare.channel.postMessage(bye);
                 liveShare.channel.close();
@@ -2690,11 +2702,19 @@ async function toggleLiveShare() {
             setLiveStatus('LIVE — sharing');
         } else {
             await loadMqttLib();
-            const client = window.mqtt.connect(LIVE_BROKER, { connectTimeout: 10000, reconnectPeriod: 3000 });
-            liveShare.client = client;
-            client.on('connect', () => { setLiveStatus('LIVE — sharing'); livePublish(true); });
-            client.on('reconnect', () => setLiveStatus('Reconnecting…'));
-            client.on('error', () => setLiveStatus('Connection trouble — retrying…'));
+            liveShare.clients = LIVE_BROKERS.map(url => {
+                const client = window.mqtt.connect(url, { connectTimeout: 9000, reconnectPeriod: 5000 });
+                client.on('connect', () => {
+                    const n = liveShare.clients.filter(c => c.connected).length;
+                    setLiveStatus(`LIVE — sharing (${n} relay${n !== 1 ? 's' : ''} connected)`);
+                    livePublish(true);
+                });
+                client.on('error', () => {
+                    const n = liveShare.clients.filter(c => c.connected).length;
+                    if (n === 0) setLiveStatus('Connecting to relays…');
+                });
+                return client;
+            });
         }
         liveShare.active = true;
         liveShare.timer = setInterval(() => livePublish(false), 1500);
@@ -2710,6 +2730,58 @@ async function toggleLiveShare() {
 }
 
 // ===== END LIVE SHARING =====
+
+// ===== CLUB HISTORY (match records) =====
+// Every finished game is saved on this device automatically.
+// "Publish to Club History" opens GitHub with the match record
+// pre-filled so a club admin can commit it to the repo, where
+// history.html picks it up for everyone.
+
+let lastMatchRecord = null;
+
+function buildMatchRecord() {
+    const game = gameState.gameMode === 'x01' ? String(gameState.gameType) :
+                 gameState.gameMode === 'killer' ? 'Killer' : 'Shanghai';
+    return {
+        ts: Date.now(),
+        date: new Date().toISOString(),
+        game: game,
+        winner: document.getElementById('winnerName').textContent,
+        turns: gameState.history.length,
+        players: gameState.players.map(p => {
+            if (gameState.gameMode === 'x01') {
+                return { name: p.name, score: p.score, avg: p.turns > 0 ? +(p.totalScored / p.turns).toFixed(1) : 0 };
+            }
+            if (gameState.gameMode === 'killer') {
+                return { name: p.name, num: p.claimedNumber, strikes: p.strikes, out: !!p.eliminated };
+            }
+            return { name: p.name, num: p.claimedNumber, place: p.place || 0 };
+        })
+    };
+}
+
+function saveMatchLocally() {
+    try {
+        lastMatchRecord = buildMatchRecord();
+        const key = 'bbdc-matches';
+        const arr = JSON.parse(localStorage.getItem(key) || '[]');
+        arr.push(lastMatchRecord);
+        while (arr.length > 300) arr.shift();
+        localStorage.setItem(key, JSON.stringify(arr));
+    } catch (e) { /* private browsing etc. — the game still works */ }
+}
+
+function saveMatchToRepo() {
+    const rec = lastMatchRecord || buildMatchRecord();
+    const d = new Date(rec.ts);
+    const pad = n => String(n).padStart(2, '0');
+    const fname = `matches/${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}-${rec.game.toLowerCase()}.json`;
+    const url = 'https://github.com/mayhem82/Darts-Score-System/new/main' +
+        `?filename=${encodeURIComponent(fname)}&value=${encodeURIComponent(JSON.stringify(rec, null, 2))}`;
+    window.open(url, '_blank');
+}
+
+// ===== END CLUB HISTORY =====
 
 function resetGame() {
     gameState = {
