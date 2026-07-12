@@ -506,6 +506,82 @@
             margin: 20px 0;
             line-height: 1.5;
         }
+
+        #liveFab {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: var(--walnut);
+            border: 2px solid var(--brass);
+            color: var(--chalk);
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+            z-index: 40;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        #liveFab:active {
+            background: var(--walnut-deep);
+        }
+
+        #liveFabDot {
+            display: none;
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--board-red);
+        }
+
+        #liveFab.on #liveFabDot {
+            display: block;
+            animation: liveFabPulse 1.6s infinite;
+        }
+
+        @keyframes liveFabPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(178, 58, 46, 0.6); }
+            50% { box-shadow: 0 0 0 6px rgba(178, 58, 46, 0); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #liveFab.on #liveFabDot { animation: none; }
+        }
+
+        #liveModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(23, 18, 13, 0.85);
+            z-index: 45;
+            padding: 20px 15px;
+            overflow-y: auto;
+        }
+
+        #liveModal.open {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        #liveModal .modal-card {
+            background: var(--walnut);
+            border: 2px solid var(--brass);
+            border-radius: 12px;
+            padding: 22px;
+            max-width: 480px;
+            width: 100%;
+            margin-top: 6vh;
+        }
     </style>
 </head>
 <body>
@@ -899,8 +975,36 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v3.0</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v3.1</span>
 </footer>
+
+<!-- Persistent broadcast control — reachable from any screen mid-game,
+     so a late viewer or a scorer who forgot to turn sharing on isn't
+     stuck waiting for a reset. -->
+<button id="liveFab" onclick="openLiveModal()" title="Live Sharing" aria-label="Live Sharing" style="display: none;">
+    <span id="liveFabDot"></span>📡
+</button>
+
+<div id="liveModal" onclick="if (event.target === this) closeLiveModal();">
+    <div class="modal-card">
+        <h2 style="margin-top: 0;">Live Sharing</h2>
+
+        <div id="liveModalOff">
+            <p class="setup-note">Share this game live — anyone can watch it update on their own phone, even mid-game. Works from wherever you are in the match.</p>
+            <button onclick="modalToggleLiveShare()" id="modalStartBtn">Start Live Sharing</button>
+        </div>
+
+        <div id="liveModalOn" style="display: none;">
+            <div class="label">Room Code</div>
+            <div id="modalRoomCode" style="font-family: var(--display); font-size: 44px; font-weight: 700; color: #c9a13b; letter-spacing: 0.25em; text-align: center;"></div>
+            <p class="setup-note">New watchers open <a id="modalViewLink" href="live.html" target="_blank" style="color: #c9a13b;">the Live Scores page</a> and enter this code — works even if they're joining halfway through.</p>
+            <div id="modalLiveStatus" class="label" style="text-align: center;"></div>
+            <button class="danger" onclick="modalToggleLiveShare()" id="modalStopBtn">Stop Live Sharing</button>
+        </div>
+
+        <button class="secondary" onclick="closeLiveModal()">Close</button>
+    </div>
+</div>
 
 <script>
 let gameState = {
@@ -1626,6 +1730,10 @@ function renderHistory() {
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
+    // The broadcast FAB is only relevant once there's a game to share —
+    // hide it on the very first "what is this phone doing" screen.
+    const fab = document.getElementById('liveFab');
+    if (fab) fab.style.display = screenId === 'roleScreen' ? 'none' : 'flex';
 }
 
 function watchLive() {
@@ -2365,7 +2473,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.0', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.1', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
@@ -2844,6 +2952,47 @@ function liveTopic(room) {
 
 function setLiveStatus(text) {
     document.getElementById('liveStatus').textContent = text;
+    const modalStatus = document.getElementById('modalLiveStatus');
+    if (modalStatus) modalStatus.textContent = text;
+}
+
+// ---- Broadcast FAB + modal: start/stop/view the room code from any
+// screen, so a scorer who forgot to share (or a late viewer) isn't
+// stuck waiting for a game reset. ----
+
+function syncLiveModal() {
+    const fab = document.getElementById('liveFab');
+    const on = liveShare.active;
+    fab.classList.toggle('on', on);
+    document.getElementById('liveModalOff').style.display = on ? 'none' : 'block';
+    document.getElementById('liveModalOn').style.display = on ? 'block' : 'none';
+    if (on) {
+        document.getElementById('modalRoomCode').textContent = liveShare.room;
+        const viewUrl = new URL('live.html', location.href);
+        viewUrl.searchParams.set('room', liveShare.room);
+        if (LIVE_TRANSPORT !== 'mqtt') viewUrl.searchParams.set('transport', LIVE_TRANSPORT);
+        document.getElementById('modalViewLink').href = viewUrl.toString();
+    }
+}
+
+function openLiveModal() {
+    syncLiveModal();
+    document.getElementById('liveModal').classList.add('open');
+}
+
+function closeLiveModal() {
+    document.getElementById('liveModal').classList.remove('open');
+}
+
+async function modalToggleLiveShare() {
+    const startBtn = document.getElementById('modalStartBtn');
+    const stopBtn = document.getElementById('modalStopBtn');
+    startBtn.disabled = true;
+    stopBtn.disabled = true;
+    await toggleLiveShare();
+    syncLiveModal();
+    startBtn.disabled = false;
+    stopBtn.disabled = false;
 }
 
 function serializeLiveState() {
@@ -2951,6 +3100,7 @@ async function toggleLiveShare() {
         document.getElementById('liveShareInfo').style.display = 'none';
         document.getElementById('liveFooterRoom').textContent = '';
         btn.textContent = 'Start Live Sharing';
+        syncLiveModal();
         return;
     }
 
@@ -2996,6 +3146,7 @@ async function toggleLiveShare() {
         btn.textContent = 'Stop Live Sharing';
         document.getElementById('liveFooterRoom').textContent = '🔴 LIVE · Room ' + room;
         livePublish(true);
+        syncLiveModal();
     } catch (err) {
         setLiveStatus(err.message || 'Could not start live sharing.');
         document.getElementById('liveShareInfo').style.display = 'block';
