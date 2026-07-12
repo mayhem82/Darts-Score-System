@@ -220,7 +220,7 @@
     <h2>Player Ladder</h2>
     <div class="table-scroll">
         <table id="ladder">
-            <tr><th>Player</th><th class="num">Games</th><th class="num">Wins</th><th class="num">Win %</th><th class="num">Best x01 Avg</th><th class="num">Last 5 x01 Avg</th></tr>
+            <tr><th>Player</th><th class="num">Games</th><th class="num">Wins</th><th class="num">Win %</th><th class="num">Best X:001 Avg</th><th class="num">Last 5 X:001 Avg</th></tr>
         </table>
     </div>
     <div class="empty-note" id="ladderEmpty" style="display: none;">No games recorded yet — finish a game on the scoreboard and it'll appear here.</div>
@@ -236,7 +236,7 @@
 
 <footer class="club-footer">
     <a href="index.html">Scoreboard</a> &nbsp;·&nbsp; <a href="rules.html">House Rules</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a>
-    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v2.6</div>
+    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v2.7</div>
 </footer>
 
 <script>
@@ -327,7 +327,10 @@ function render(all) {
                 const placeTag = p.place ? ` ${['1st','2nd','3rd','4th','5th'][p.place - 1] || ''}` : '';
                 return `${p.name}${placeTag} ${p.score}${p.avg ? ` (avg ${p.avg})` : ''}`;
             }
-            if (typeof p.strikes === 'number') return `${p.name} ${p.out ? 'out' : 'won'} ${p.strikes}/5`;
+            if (typeof p.strikes === 'number') {
+                const status = p.place === 1 ? 'won' : p.place ? (['1st','2nd','3rd','4th','5th'][p.place - 1] || `${p.place}th`) : 'out';
+                return `${p.name} ${status} ${p.strikes}/5`;
+            }
             if (p.place) return `${p.name} ${['1st','2nd','3rd','4th'][p.place - 1] || p.place + 'th'}`;
             return p.name;
         }).join(' · ');
@@ -349,7 +352,7 @@ function render(all) {
     const club = await repoMatches();
     if (club.length) {
         document.getElementById('ladder').innerHTML =
-            '<tr><th>Player</th><th class="num">Games</th><th class="num">Wins</th><th class="num">Win %</th><th class="num">Best x01 Avg</th><th class="num">Last 5 x01 Avg</th></tr>';
+            '<tr><th>Player</th><th class="num">Games</th><th class="num">Wins</th><th class="num">Win %</th><th class="num">Best X:001 Avg</th><th class="num">Last 5 X:001 Avg</th></tr>';
         render(local.concat(club));
     }
 })();

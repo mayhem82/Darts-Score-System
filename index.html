@@ -544,13 +544,13 @@
 
     <h2>Select Game Mode</h2>
     <div class="game-select">
-        <button id="x01ModeBtn" onclick="selectGameMode('x01')">x01</button>
+        <button id="x01ModeBtn" onclick="selectGameMode('x01')">X:001</button>
         <button id="killerModeBtn" class="secondary" onclick="selectGameMode('killer')">Killer</button>
         <button id="shanghaiModeBtn" class="secondary" onclick="selectGameMode('shanghai')">Shanghai</button>
     </div>
 
     <div id="x01Setup" style="display: block;">
-        <h2>x01 Mode</h2>
+        <h2>X:001 Mode</h2>
         <p class="setup-note">Everyone starts on 101, 201 or 301 and races to EXACTLY zero. Three darts a turn. Straight In means every dart counts from the first throw; Double In means your scoring doesn't start until you hit a double. You must FINISH on a double that lands you exactly on zero (the 50 bull counts). Go below zero, land on 1, or reach zero without a double and the turn is a BUST — your score goes back to where it started.</p>
 
         <h2>Select Game Type</h2>
@@ -571,22 +571,42 @@
         <h2>Places</h2>
         <p class="setup-note">How many finishing places before the game ends. 1 is a classic single winner; pick more and play continues for Second, Third… If only one player is left unplaced, they take the last place automatically.</p>
         <div class="game-select">
-            <button id="placesBtn1" onclick="selectPlaces(1)">1</button>
-            <button id="placesBtn2" class="secondary" onclick="selectPlaces(2)">2</button>
-            <button id="placesBtn3" class="secondary" onclick="selectPlaces(3)">3</button>
-            <button id="placesBtn4" class="secondary" onclick="selectPlaces(4)">4</button>
-            <button id="placesBtn5" class="secondary" onclick="selectPlaces(5)">5</button>
+            <button id="x01PlacesBtn1" class="secondary" onclick="selectPlaces(1)">1</button>
+            <button id="x01PlacesBtn2" onclick="selectPlaces(2)">2</button>
+            <button id="x01PlacesBtn3" class="secondary" onclick="selectPlaces(3)">3</button>
+            <button id="x01PlacesBtn4" class="secondary" onclick="selectPlaces(4)">4</button>
+            <button id="x01PlacesBtn5" class="secondary" onclick="selectPlaces(5)">5</button>
         </div>
     </div>
 
     <div id="killerSetup" style="display: none;">
         <h2>Killer Mode</h2>
         <p class="setup-note">Each player throws with their NON-DOMINANT hand until they land on a free number — however many darts it takes. That number is theirs. Claim in any order (lucky pick, first to arrive) — the match is then played in the order numbers were claimed. Hit OPPONENT numbers to give them strikes. Hit YOUR OWN number to remove strikes from yourself. First to 5 strikes is ELIMINATED. Last player standing wins.</p>
+
+        <h2>Places</h2>
+        <p class="setup-note">How many finishing places get an official rank. Places are awarded in reverse elimination order — the winner is First, the last player eliminated is Second, the one before them Third, and so on. Everyone outside the chosen places stays unplaced and can go into the Bonus Round.</p>
+        <div class="game-select">
+            <button id="killerPlacesBtn1" class="secondary" onclick="selectPlaces(1)">1</button>
+            <button id="killerPlacesBtn2" onclick="selectPlaces(2)">2</button>
+            <button id="killerPlacesBtn3" class="secondary" onclick="selectPlaces(3)">3</button>
+            <button id="killerPlacesBtn4" class="secondary" onclick="selectPlaces(4)">4</button>
+            <button id="killerPlacesBtn5" class="secondary" onclick="selectPlaces(5)">5</button>
+        </div>
     </div>
 
     <div id="shanghaiSetup" style="display: none;">
         <h2>Shanghai Mode</h2>
-        <p class="setup-note">Each player throws with their NON-DOMINANT hand until they land on a free number (1–20) — however many darts it takes. That number is theirs for the WHOLE game, and claiming is the only non-dominant throwing of the match. Claim in any order (lucky pick, first to arrive). The match is then played in the order numbers were claimed. Hit a SINGLE, a DOUBLE and a TRIPLE of your own number, in any order, to finish. First four to finish take First, Second, Third and Fourth.</p>
+        <p class="setup-note">Each player throws with their NON-DOMINANT hand until they land on a free number (1–20) — however many darts it takes. That number is theirs for the WHOLE game, and claiming is the only non-dominant throwing of the match. Claim in any order (lucky pick, first to arrive). The match is then played in the order numbers were claimed. Hit a SINGLE, a DOUBLE and a TRIPLE of your own number, in any order, to finish.</p>
+
+        <h2>Places</h2>
+        <p class="setup-note">How many finishing places before the game ends. Play continues for First, Second… in the order players finish. If only one player is left unplaced, they take the last place automatically.</p>
+        <div class="game-select">
+            <button id="shanghaiPlacesBtn1" class="secondary" onclick="selectPlaces(1)">1</button>
+            <button id="shanghaiPlacesBtn2" onclick="selectPlaces(2)">2</button>
+            <button id="shanghaiPlacesBtn3" class="secondary" onclick="selectPlaces(3)">3</button>
+            <button id="shanghaiPlacesBtn4" class="secondary" onclick="selectPlaces(4)">4</button>
+            <button id="shanghaiPlacesBtn5" class="secondary" onclick="selectPlaces(5)">5</button>
+        </div>
     </div>
 
     <h2>Add Players (Min 2, Max 12)</h2>
@@ -879,7 +899,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v2.6</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v2.7</span>
 </footer>
 
 <script>
@@ -887,7 +907,7 @@ let gameState = {
     gameMode: 'x01',
     gameType: null,
     doubleIn: false,
-    places: 1,
+    places: 2,
     x01Placings: [],
     hasStarted: [],
     players: [],
@@ -903,9 +923,11 @@ let gameState = {
 
 function selectPlaces(n) {
     gameState.places = n;
-    for (let i = 1; i <= 5; i++) {
-        document.getElementById('placesBtn' + i).classList.toggle('secondary', i !== n);
-    }
+    ['x01', 'killer', 'shanghai'].forEach(prefix => {
+        for (let i = 1; i <= 5; i++) {
+            document.getElementById(prefix + 'PlacesBtn' + i).classList.toggle('secondary', i !== n);
+        }
+    });
 }
 
 function selectGameMode(mode) {
@@ -1028,6 +1050,7 @@ function startKillerGame() {
         p.strikes = 0;
         p.claimedNumber = null;
         p.eliminated = false;
+        p.place = null;
     });
     gameState.currentPlayerIndex = 0;
     gameState.history = [];
@@ -1035,6 +1058,7 @@ function startKillerGame() {
     killerState.selectedPlayerIndex = null;
     killerState.selectedNumber = null;
     killerState.claimOrder = [];
+    killerEliminationOrder = [];
 
     showScreen('killerSetupScreen');
 
@@ -1622,6 +1646,10 @@ let killerState = {
     currentDarts: []
 };
 
+// Tracks players in the order they're eliminated, so places can be
+// awarded in reverse elimination order once the game ends.
+let killerEliminationOrder = [];
+
 function renderKillerClaimBoard() {
     const board = document.getElementById('killerClaimBoard');
     // Claimed players first, in claim (= playing) order, then the rest
@@ -1874,6 +1902,7 @@ function confirmKillerHit() {
             // Check elimination
             if (targetPlayer.strikes >= 5) {
                 targetPlayer.eliminated = true;
+                killerEliminationOrder.push(targetPlayer);
                 gameState.history.unshift({
                     player: targetPlayer.name,
                     action: 'ELIMINATED',
@@ -1883,6 +1912,7 @@ function confirmKillerHit() {
                 // Check for winner
                 const activePlayers = gameState.players.filter(p => !p.eliminated);
                 if (activePlayers.length === 1) {
+                    assignKillerPlacements(activePlayers[0]);
                     showKillerWinner(activePlayers[0]);
                     return;
                 }
@@ -1900,6 +1930,8 @@ function confirmKillerHit() {
 
     renderKillerHistory();
     renderKillerDartDisplay();
+    renderKillerScoreboard();
+    document.getElementById('undoKillerBtn').disabled = false;
 
     // Check if 3 darts thrown
     if (killerState.currentDarts.length >= 3) {
@@ -1971,6 +2003,8 @@ function undoKillerDart() {
                 // Uneliminate if they were eliminated
                 if (targetPlayer.eliminated && targetPlayer.strikes < 5) {
                     targetPlayer.eliminated = false;
+                    const idx = killerEliminationOrder.indexOf(targetPlayer);
+                    if (idx !== -1) killerEliminationOrder.splice(idx, 1);
                 }
             }
         }
@@ -2039,6 +2073,8 @@ function clearKillerTurn() {
                     // Uneliminate if they were eliminated this turn
                     if (targetPlayer.eliminated && targetPlayer.strikes < 5) {
                         targetPlayer.eliminated = false;
+                        const idx = killerEliminationOrder.indexOf(targetPlayer);
+                        if (idx !== -1) killerEliminationOrder.splice(idx, 1);
                     }
                 }
             }
@@ -2103,12 +2139,38 @@ function renderKillerHistory() {
         `).join('');
 }
 
+// Places are awarded in reverse elimination order: the winner is
+// First, the last player eliminated is Second, the one before them
+// Third, and so on. Only the top N (by gameState.places) get an
+// official place; everyone else stays unplaced and is Bonus Round
+// eligible.
+function assignKillerPlacements(winner) {
+    const target = Math.min(gameState.places, gameState.players.length);
+    winner.place = 1;
+
+    const total = killerEliminationOrder.length;
+    killerEliminationOrder.forEach((p, i) => {
+        const place = (total - i) + 1;
+        if (place <= target) p.place = place;
+    });
+}
+
 function showKillerWinner(player) {
     document.getElementById('winnerName').textContent = player.name;
 
+    const placedPlayers = gameState.players
+        .filter(p => p.place)
+        .sort((a, b) => a.place - b.place);
+    const placingsHtml = placedPlayers.map(p => `
+        <div class="history-item">
+            <strong>${shanghaiOrdinal(p.place)}:</strong> ${p.name}
+        </div>
+    `).join('');
+
     // Show game history
     const historyEl = document.getElementById('winnerHistory');
-    historyEl.innerHTML = '<div class="label">Game History</div>' +
+    historyEl.innerHTML = '<div class="label">Final Placings</div>' + placingsHtml +
+        '<div class="label" style="margin-top: 12px;">Game History</div>' +
         gameState.history.map(h => `
             <div class="history-item">
                 ${h.action}
@@ -2258,11 +2320,12 @@ function downloadHistory() {
             const isWinner = p.name === winner;
             const fill = isWinner ? 'F3ECD9' : undefined;
             const numText = p.claimedNumber === 25 ? 'Bull 25' : p.claimedNumber === 50 ? 'Bull 50' : String(p.claimedNumber);
+            const result = p.place === 1 ? 'Winner' : p.place ? `Finished ${shanghaiOrdinal(p.place)}` : 'Eliminated';
             playerRows.push([
                 docxCell(docxRun(p.name + (isWinner ? '  🎯' : ''), { b: isWinner ? 1 : 0, sz: 22, color: INK }), { fill }),
                 docxCell(docxRun(numText, { sz: 22, color: INK }), { fill, align: 'center' }),
                 docxCell(docxRun(`${p.strikes}/5`, { sz: 22, color: INK }), { fill, align: 'center' }),
-                docxCell(docxRun(p.eliminated ? 'ELIMINATED' : 'WINNER', { b: 1, sz: 20, color: p.eliminated ? RED : GREEN }), { fill, align: 'center' })
+                docxCell(docxRun(result, { b: p.place ? 1 : 0, sz: 20, color: p.place ? GREEN : (p.eliminated ? RED : DIM) }), { fill, align: 'center' })
             ]);
         });
     } else {
@@ -2302,7 +2365,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v2.6', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v2.7', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
@@ -2647,9 +2710,10 @@ function completeShanghai(player) {
     });
 
     const unfinished = gameState.players.filter(p => !p.finished);
+    const target = Math.min(gameState.places, gameState.players.length);
 
-    // All four places taken, or nobody left to play
-    if (shanghaiState.placings.length >= 4 || unfinished.length === 0) {
+    // All wanted places taken, or nobody left to play
+    if (shanghaiState.placings.length >= target || unfinished.length === 0) {
         showShanghaiResults();
         return;
     }
@@ -2798,6 +2862,7 @@ function serializeLiveState() {
             row.num = p.claimedNumber;
             row.strikes = p.strikes || 0;
             row.out = !!p.eliminated;
+            row.place = p.place || 0;
         } else {
             row.num = p.claimedNumber;
             row.hits = p.shHits ? { s: p.shHits.single, d: p.shHits.double, t: p.shHits.triple } : null;
@@ -2963,7 +3028,7 @@ function buildMatchRecord() {
                 return { name: p.name, score: p.score, avg: p.turns > 0 ? +(p.totalScored / p.turns).toFixed(1) : 0, place: p.place || 0 };
             }
             if (gameState.gameMode === 'killer') {
-                return { name: p.name, num: p.claimedNumber, strikes: p.strikes, out: !!p.eliminated };
+                return { name: p.name, num: p.claimedNumber, strikes: p.strikes, out: !!p.eliminated, place: p.place || 0 };
             }
             return { name: p.name, num: p.claimedNumber, place: p.place || 0 };
         })
@@ -3012,8 +3077,7 @@ let bonusState = {
 };
 
 function updateBonusButton() {
-    const contenders = gameState.players.filter(p =>
-        gameState.gameMode === 'killer' ? p.eliminated : !p.place);
+    const contenders = gameState.players.filter(p => !p.place);
     bonusState.contenders = contenders.map(p => ({ name: p.name }));
     document.getElementById('bonusRoundBtn').style.display =
         contenders.length >= 2 ? 'block' : 'none';
@@ -3302,7 +3366,7 @@ function resetGame() {
         gameMode: 'x01',
         gameType: null,
         doubleIn: false,
-        places: 1,
+        places: 2,
         x01Placings: [],
         hasStarted: [],
         players: [],
@@ -3323,6 +3387,7 @@ function resetGame() {
         claimOrder: [],
         currentDarts: []
     };
+    killerEliminationOrder = [];
 
     shanghaiState = {
         selectedPlayerIndex: null,
@@ -3348,10 +3413,12 @@ function resetGame() {
     document.getElementById('doubleInBtn').classList.add('secondary');
     document.getElementById('straightInBtn').classList.remove('secondary');
 
-    // Reset places to a single winner
-    for (let i = 1; i <= 5; i++) {
-        document.getElementById('placesBtn' + i).classList.toggle('secondary', i !== 1);
-    }
+    // Reset places to the default of 2
+    ['x01', 'killer', 'shanghai'].forEach(prefix => {
+        for (let i = 1; i <= 5; i++) {
+            document.getElementById(prefix + 'PlacesBtn' + i).classList.toggle('secondary', i !== 2);
+        }
+    });
 
     checkStartButton();
 
