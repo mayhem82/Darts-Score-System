@@ -215,6 +215,7 @@
 
 <h1>Club History</h1>
 <p class="intro">Every game finished on this device, plus games published to the club record. <span class="src-tag src-club">Club</span> games are visible to everyone; <span class="src-tag src-device">This device</span> games live only in this browser until published.</p>
+<p class="intro" style="margin-top: -10px;"><a href="#" id="clearLocalLink" onclick="clearLocalHistory(); return false;" style="color: #c9a13b;">Clear local history on this device</a></p>
 
 <section>
     <h2>Player Ladder</h2>
@@ -344,6 +345,12 @@ function render(all) {
             </div>
         `;
     }).join('');
+}
+
+function clearLocalHistory() {
+    if (!confirm('Clear all match history saved on this device? This cannot be undone. Games already published to Club History will still show.')) return;
+    localStorage.removeItem('bbdc-matches');
+    window.location.reload();
 }
 
 (async () => {
