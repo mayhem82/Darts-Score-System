@@ -510,7 +510,7 @@
 
 <footer class="club-footer">
     <a href="index.html">Scoreboard</a> &nbsp;·&nbsp; <a href="rules.html">House Rules</a> &nbsp;·&nbsp; <a href="history.html">Club History</a>
-    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v2.8</div>
+    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v2.9</div>
 </footer>
 
 <!-- End-of-turn quick stats card -->
@@ -697,6 +697,25 @@ document.addEventListener('fullscreenchange', () => {
         setTv(true, false);
     }
 });
+
+// Rotate the device to landscape -> Big Screen activates automatically
+// for whichever board(s) are live; rotate back to portrait -> it drops
+// back to the normal view. Only kicks in once a room is actually
+// being watched (not on the join screen).
+let viewerActive = false;
+let tvForced = false; // true when &tv=1 pins Big Screen on regardless of orientation
+const landscapeQuery = window.matchMedia('(orientation: landscape)');
+
+function applyOrientationTv() {
+    if (!viewerActive || tvForced) return;
+    setTv(landscapeQuery.matches, true);
+}
+
+if (landscapeQuery.addEventListener) {
+    landscapeQuery.addEventListener('change', applyOrientationTv);
+} else if (landscapeQuery.addListener) {
+    landscapeQuery.addListener(applyOrientationTv); // older Safari
+}
 
 // ---- Boards ----
 
@@ -913,6 +932,7 @@ setInterval(() => {
 function connectAll(rooms) {
     document.getElementById('joinScreen').style.display = 'none';
     document.getElementById('liveScreen').style.display = 'block';
+    viewerActive = true;
     totalBoards = rooms.length;
     const wrap = document.getElementById('boards');
     wrap.classList.toggle('dual', rooms.length > 1);
@@ -937,10 +957,17 @@ const roomParam = (params.get('room') || '').toUpperCase();
 const rooms = roomParam.split(',').map(r => r.trim()).filter(r => r.length >= 4).slice(0, 2);
 if (rooms.length) {
     connectAll(rooms);
-    // Wall-mounted phone/tablet/TV: add &tv=1 to a bookmarked URL to
-    // start straight in Big Screen. Everyone else starts normal and
-    // can toggle Big Screen with the button.
-    if (params.get('tv') === '1') setTv(true, false);
+    if (params.get('tv') === '1') {
+        // Wall-mounted phone/tablet/TV: add &tv=1 to a bookmarked URL
+        // to force Big Screen on regardless of orientation.
+        tvForced = true;
+        setTv(true, false);
+    } else {
+        // Otherwise Big Screen follows the device's orientation: turn
+        // landscape and it activates automatically; turn back to
+        // portrait and it drops back to the normal view.
+        applyOrientationTv();
+    }
 }
 </script>
 
