@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Weekly Dashboard — Bellbrook Darts Club</title>
+<link rel="stylesheet" href="tipping.css">
+</head>
+<body>
+
+<div class="club-header">
+    <div class="club-mark">🎯</div>
+    <div class="club-name">Bellbrook Darts Club</div>
+    <div class="club-sub">Weekly Competition</div>
+</div>
+
+<main>
+    <h1>Weekly Dashboard</h1>
+    <div id="configWarning"></div>
+
+    <section>
+        <div class="pot-figure" id="poolFigure">—</div>
+        <div class="pot-label">This Week's Prize Pool</div>
+    </section>
+
+    <section>
+        <p class="setup-note" id="roundInfo">Loading…</p>
+        <div class="countdown" id="countdown"></div>
+        <p class="setup-note" id="entryCount"></p>
+    </section>
+
+    <section id="prevWinnerSection" style="display:none;">
+        <h2>Previous Week's Results</h2>
+        <div class="table-scroll">
+            <table id="prevTable">
+                <thead><tr><th>#</th><th>Player</th><th class="num">Points</th></tr></thead>
+                <tbody id="prevBody"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <a class="back-link" href="index.html">← Submit Tips</a>
+    <a class="back-link" href="league.html">View League Dashboard →</a>
+</main>
+
+<div class="club-footer">
+    Bellbrook Hotel · Darts Club Tipping · v1.0
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script>
+let currentRound = null;
+let countdownTimer = null;
+
+async function init() {
+    document.getElementById('configWarning').innerHTML = configWarning();
+    if (CONFIG_PLACEHOLDER) {
+        document.getElementById('roundInfo').textContent = 'Waiting on Supabase setup.';
+        return;
+    }
+    try {
+        const season = await getCurrentSeason();
+        if (!season) {
+            document.getElementById('roundInfo').textContent = 'No season is currently running.';
+            return;
+        }
+        const rounds = await getRounds(season.id);
+        const now = new Date();
+        currentRound = rounds.find(r => new Date(r.opens_at) <= now && now < new Date(r.closes_at)) || rounds[0];
+
+        if (!currentRound) {
+            document.getElementById('roundInfo').textContent = 'No rounds scheduled yet.';
+            return;
+        }
+
+        document.getElementById('roundInfo').textContent = `Round ${currentRound.round_number}`;
+
+        const [pool, board] = await Promise.all([
+            weeklyPrizePool(currentRound.id),
+            weeklyLeaderboard(currentRound.id)
+        ]);
+        document.getElementById('poolFigure').textContent = money(pool);
+        document.getElementById('entryCount').textContent = `${board.length} weekly ${board.length === 1 ? 'entry' : 'entries'} so far`;
+
+        updateCountdown();
+        countdownTimer = setInterval(updateCountdown, 1000);
+
+        const past = rounds.filter(r => r.round_number < currentRound.round_number);
+        if (past.length) {
+            const prevRound = past[0];
+            const prevBoard = await weeklyLeaderboard(prevRound.id);
+            if (prevBoard.length) {
+                document.getElementById('prevBody').innerHTML = prevBoard.map((r, i) => `
+                    <tr><td>${i + 1}</td><td>${escapeHtml(r.participant_name)}</td><td class="num">${r.points}</td></tr>
+                `).join('');
+                document.getElementById('prevWinnerSection').style.display = '';
+            }
+        }
+    } catch (e) {
+        document.getElementById('roundInfo').textContent = 'Could not reach the tipping server.';
+        console.error(e);
+    }
+}
+
+function updateCountdown() {
+    const status = roundStatus(currentRound);
+    const el = document.getElementById('countdown');
+    if (!status.open) {
+        el.textContent = status.label;
+        if (countdownTimer) clearInterval(countdownTimer);
+        return;
+    }
+    const remaining = new Date(currentRound.closes_at) - new Date();
+    el.textContent = formatCountdown(remaining) + ' until close';
+}
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>

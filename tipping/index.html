@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Tipping — Bellbrook Darts Club</title>
+<link rel="stylesheet" href="tipping.css">
+</head>
+<body>
+
+<div class="club-header">
+    <div class="club-mark">🎯</div>
+    <div class="club-name">Bellbrook Darts Club</div>
+    <div class="club-sub">Tipping Competition</div>
+</div>
+
+<main>
+    <h1>Submit Your Tips</h1>
+    <p class="intro">Wednesdays 3:30pm&nbsp;–&nbsp;5:15pm AEST only. Entry fees ($10 weekly / $50 season) are paid in cash at the bar — this page never handles money.</p>
+
+    <div id="configWarning"></div>
+
+    <section id="statusCard">
+        <p class="setup-note">Loading round status…</p>
+    </section>
+
+    <section id="leagueSection" style="display:none;">
+        <h2>Season League Tip <span class="pill" id="leaguePill"></span></h2>
+        <div class="field-group">
+            <label for="leagueName">Your Name</label>
+            <input id="leagueName" placeholder="Full name" autocomplete="name">
+        </div>
+        <div class="field-group">
+            <label for="leagueCode">League Access Code</label>
+            <input id="leagueCode" placeholder="Given to you at signup">
+        </div>
+        <div class="field-group">
+            <label for="leagueWinner">Predicted Winner</label>
+            <input id="leagueWinner" placeholder="Player name">
+        </div>
+        <div class="field-group">
+            <label for="leagueCheckout">Predicted Winning Checkout</label>
+            <input id="leagueCheckout" type="number" min="0" max="170" placeholder="e.g. 121">
+        </div>
+        <div class="field-group">
+            <label for="leagueTotal180s">Predicted Total 180s (both players)</label>
+            <input id="leagueTotal180s" type="number" min="0" placeholder="e.g. 4">
+        </div>
+        <button id="leagueSubmitBtn" onclick="doSubmit('league')">Submit League Tip</button>
+        <div id="leagueMessage"></div>
+    </section>
+
+    <section id="weeklySection" style="display:none;">
+        <h2>Weekly Tip <span class="pill" id="weeklyPill"></span></h2>
+        <div class="field-group">
+            <label for="weeklyName">Your Name</label>
+            <input id="weeklyName" placeholder="Full name" autocomplete="name">
+        </div>
+        <div class="field-group">
+            <label for="weeklyCode">Weekly Round Code</label>
+            <input id="weeklyCode" placeholder="Posted at the bar this week">
+        </div>
+        <div class="field-group">
+            <label for="weeklyWinner">Predicted Winner</label>
+            <input id="weeklyWinner" placeholder="Player name">
+        </div>
+        <div class="field-group">
+            <label for="weeklyCheckout">Predicted Winning Checkout</label>
+            <input id="weeklyCheckout" type="number" min="0" max="170" placeholder="e.g. 121">
+        </div>
+        <div class="field-group">
+            <label for="weeklyTotal180s">Predicted Total 180s (both players)</label>
+            <input id="weeklyTotal180s" type="number" min="0" placeholder="e.g. 4">
+        </div>
+        <button id="weeklySubmitBtn" onclick="doSubmit('weekly')">Submit Weekly Tip</button>
+        <div id="weeklyMessage"></div>
+    </section>
+
+    <section id="closedSection" style="display:none;">
+        <p class="setup-note">Tipping is closed right now. It opens automatically every Wednesday, 3:30pm&nbsp;AEST, and locks for good at 5:15pm.</p>
+    </section>
+
+    <a class="back-link" href="league.html">View League Dashboard →</a>
+    <a class="back-link" href="weekly.html">View Weekly Dashboard →</a>
+    <a class="back-link" href="../index.html">← Back to Scoreboard</a>
+</main>
+
+<div class="club-footer">
+    Bellbrook Hotel · Darts Club Tipping · v1.0
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script>
+let currentRound = null;
+let currentSeason = null;
+let refreshTimer = null;
+
+async function init() {
+    document.getElementById('configWarning').innerHTML = configWarning();
+    if (CONFIG_PLACEHOLDER) {
+        document.getElementById('statusCard').innerHTML = '<p class="setup-note">Waiting on Supabase setup.</p>';
+        return;
+    }
+    try {
+        currentSeason = await getCurrentSeason();
+        if (!currentSeason) {
+            document.getElementById('statusCard').innerHTML = '<p class="setup-note">No season is currently running.</p>';
+            return;
+        }
+        currentRound = await getCurrentRound(currentSeason.id);
+        render();
+        refreshTimer = setInterval(render, 1000);
+    } catch (e) {
+        document.getElementById('statusCard').innerHTML = '<div class="message">Could not reach the tipping server. Try again shortly.</div>';
+        console.error(e);
+    }
+}
+
+function render() {
+    const status = roundStatus(currentRound);
+    const card = document.getElementById('statusCard');
+    card.innerHTML = `<p class="setup-note">Round ${currentRound ? currentRound.round_number : '—'}
+        <span class="pill ${status.cssClass}">${status.label}</span></p>`;
+
+    document.getElementById('leaguePill').className = 'pill ' + status.cssClass;
+    document.getElementById('leaguePill').textContent = status.label;
+    document.getElementById('weeklyPill').className = 'pill ' + status.cssClass;
+    document.getElementById('weeklyPill').textContent = status.label;
+
+    const open = status.open;
+    document.getElementById('leagueSection').style.display = open ? '' : 'none';
+    document.getElementById('weeklySection').style.display = open ? '' : 'none';
+    document.getElementById('closedSection').style.display = open ? 'none' : '';
+    document.getElementById('leagueSubmitBtn').disabled = !open;
+    document.getElementById('weeklySubmitBtn').disabled = !open;
+}
+
+async function doSubmit(type) {
+    if (!currentRound) return;
+    const prefix = type;
+    const name = document.getElementById(prefix + 'Name').value.trim();
+    const code = document.getElementById(prefix + 'Code').value.trim();
+    const winner = document.getElementById(prefix + 'Winner').value.trim();
+    const checkout = parseInt(document.getElementById(prefix + 'Checkout').value, 10);
+    const total180s = parseInt(document.getElementById(prefix + 'Total180s').value, 10);
+    const msgEl = document.getElementById(prefix + 'Message');
+
+    if (!name || !code || !winner || isNaN(checkout) || isNaN(total180s)) {
+        msgEl.innerHTML = '<div class="message">Please fill in every field.</div>';
+        return;
+    }
+
+    const btn = document.getElementById(prefix + 'SubmitBtn');
+    btn.disabled = true;
+    try {
+        const result = await submitTip(currentRound.id, type, name, code, winner, checkout, total180s);
+        msgEl.innerHTML = `<div class="message ${result.ok ? 'success' : ''}">${result.message}</div>`;
+        if (result.ok) {
+            currentRound = await getCurrentRound(currentSeason.id);
+            render();
+        }
+    } catch (e) {
+        msgEl.innerHTML = '<div class="message">Something went wrong submitting your tip. Try again.</div>';
+        console.error(e);
+    } finally {
+        btn.disabled = !roundStatus(currentRound).open;
+    }
+}
+
+init();
+</script>
+</body>
+</html>

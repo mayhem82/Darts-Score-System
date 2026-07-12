@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Admin — Bellbrook Darts Club Tipping</title>
+<link rel="stylesheet" href="tipping.css">
+</head>
+<body>
+
+<div class="club-header">
+    <div class="club-mark">🎯</div>
+    <div class="club-name">Bellbrook Darts Club</div>
+    <div class="club-sub">Tipping Admin</div>
+</div>
+
+<main>
+    <h1>Admin Panel</h1>
+    <div id="configWarning"></div>
+
+    <section id="loginSection" style="display:none;">
+        <p class="setup-note">Sign in with the admin email registered in the database (admin_users table).</p>
+        <div class="field-group">
+            <label for="loginEmail">Admin Email</label>
+            <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <button onclick="sendMagicLink()">Send Magic Link</button>
+        <div id="loginMessage"></div>
+    </section>
+
+    <section id="notAdminSection" style="display:none;">
+        <div class="message">Signed in, but this account is not in admin_users. Ask an existing admin to add your email, then reload.</div>
+        <button class="secondary" onclick="signOut()">Sign Out</button>
+    </section>
+
+    <div id="adminArea" style="display:none;">
+        <section>
+            <p class="setup-note" id="whoami"></p>
+            <button class="secondary" onclick="signOut()">Sign Out</button>
+        </section>
+
+        <section>
+            <h2>Seasons</h2>
+            <div class="field-group">
+                <label for="seasonName">Season Name</label>
+                <input id="seasonName" placeholder="e.g. 2026 Season">
+            </div>
+            <div class="field-group">
+                <label for="leagueFee">League Entry Fee ($)</label>
+                <input id="leagueFee" type="number" value="50">
+            </div>
+            <div class="field-group">
+                <label for="weeklyFee">Weekly Entry Fee ($)</label>
+                <input id="weeklyFee" type="number" value="10">
+            </div>
+            <button onclick="createSeason()">Create Season</button>
+            <div id="seasonMessage"></div>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>Name</th><th>Current</th><th></th></tr></thead>
+                    <tbody id="seasonsBody"><tr><td colspan="3" class="setup-note">Loading…</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <h2>League Entrants</h2>
+            <div class="field-group">
+                <label for="entrantSeason">Season</label>
+                <select id="entrantSeason"></select>
+            </div>
+            <div class="field-group">
+                <label for="entrantName">Participant Name</label>
+                <input id="entrantName" placeholder="Full name">
+            </div>
+            <div class="field-group">
+                <label for="entrantCode">League Access Code</label>
+                <input id="entrantCode" placeholder="Set a code for this entrant">
+            </div>
+            <button onclick="addEntrant()">Add / Update Entrant</button>
+            <div id="entrantMessage"></div>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>Name</th><th>Code</th><th>Active</th></tr></thead>
+                    <tbody id="entrantsBody"><tr><td colspan="3" class="setup-note">Select a season above.</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <h2>Rounds</h2>
+            <div class="field-group">
+                <label for="roundSeason">Season</label>
+                <select id="roundSeason"></select>
+            </div>
+            <div class="field-group">
+                <label for="roundNumber">Round Number</label>
+                <input id="roundNumber" type="number" min="1">
+            </div>
+            <div class="field-group">
+                <label for="roundCode">Weekly Round Code</label>
+                <input id="roundCode" placeholder="Unique code for this round">
+            </div>
+            <div class="field-group">
+                <label for="roundOpens">Opens At</label>
+                <input id="roundOpens" type="datetime-local">
+            </div>
+            <div class="field-group">
+                <label for="roundCloses">Closes At</label>
+                <input id="roundCloses" type="datetime-local">
+            </div>
+            <button onclick="createRound()">Create / Update Round</button>
+            <div id="roundMessage"></div>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>#</th><th>Opens</th><th>Closes</th></tr></thead>
+                    <tbody id="roundsBody"><tr><td colspan="3" class="setup-note">Select a season above.</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <h2>Match Results</h2>
+            <div class="field-group">
+                <label for="resultRound">Round</label>
+                <select id="resultRound"></select>
+            </div>
+            <div class="field-group">
+                <label for="resultWinner">Winner</label>
+                <input id="resultWinner" placeholder="Player name">
+            </div>
+            <div class="field-group">
+                <label for="resultCheckout">Winning Checkout</label>
+                <input id="resultCheckout" type="number" min="0" max="170">
+            </div>
+            <div class="field-group">
+                <label for="resultTotal180s">Total 180s (both players)</label>
+                <input id="resultTotal180s" type="number" min="0">
+            </div>
+            <button onclick="enterResult()">Save Result</button>
+            <div id="resultMessage"></div>
+            <p class="setup-note">Saving a result immediately scores every submitted tip for that round.</p>
+        </section>
+    </div>
+
+    <a class="back-link" href="index.html">← Tipping Portal</a>
+</main>
+
+<div class="club-footer">
+    Bellbrook Hotel · Darts Club Tipping · v1.0
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script>
+let allSeasons = [];
+
+async function init() {
+    document.getElementById('configWarning').innerHTML = configWarning();
+    if (CONFIG_PLACEHOLDER) return;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+        document.getElementById('loginSection').style.display = '';
+        return;
+    }
+
+    const { data: adminCheck, error } = await supabase.rpc('is_admin');
+    if (error || !adminCheck) {
+        document.getElementById('notAdminSection').style.display = '';
+        return;
+    }
+
+    document.getElementById('whoami').textContent = `Signed in as ${session.user.email}`;
+    document.getElementById('adminArea').style.display = '';
+    await loadSeasons();
+}
+
+async function sendMagicLink() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const msg = document.getElementById('loginMessage');
+    if (!email) return;
+    const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.href }
+    });
+    msg.innerHTML = error
+        ? `<div class="message">${error.message}</div>`
+        : '<div class="message success">Check your email for a sign-in link.</div>';
+}
+
+async function signOut() {
+    await supabase.auth.signOut();
+    window.location.reload();
+}
+
+async function loadSeasons() {
+    const { data, error } = await supabase.from('seasons').select('*').order('created_at', { ascending: false });
+    if (error) {
+        document.getElementById('seasonsBody').innerHTML = `<tr><td colspan="3" class="setup-note">${error.message}</td></tr>`;
+        return;
+    }
+    allSeasons = data || [];
+
+    document.getElementById('seasonsBody').innerHTML = allSeasons.length
+        ? allSeasons.map(s => `
+            <tr>
+                <td>${escapeHtml(s.name)}</td>
+                <td>${s.is_current ? 'Yes' : ''}</td>
+                <td>${s.is_current ? '' : `<button class="secondary" onclick="setCurrentSeason('${s.id}')">Set Current</button>`}</td>
+            </tr>
+        `).join('')
+        : '<tr><td colspan="3" class="setup-note">No seasons yet.</td></tr>';
+
+    const options = allSeasons.map(s => `<option value="${s.id}">${escapeHtml(s.name)}${s.is_current ? ' (current)' : ''}</option>`).join('');
+    document.getElementById('entrantSeason').innerHTML = options;
+    document.getElementById('roundSeason').innerHTML = options;
+
+    if (allSeasons.length) {
+        await loadEntrants(document.getElementById('entrantSeason').value);
+        await loadRounds(document.getElementById('roundSeason').value);
+    }
+}
+
+async function createSeason() {
+    const name = document.getElementById('seasonName').value.trim();
+    const league_entry_fee = parseFloat(document.getElementById('leagueFee').value);
+    const weekly_entry_fee = parseFloat(document.getElementById('weeklyFee').value);
+    const msg = document.getElementById('seasonMessage');
+    if (!name) { msg.innerHTML = '<div class="message">Name is required.</div>'; return; }
+
+    const { error } = await supabase.from('seasons').insert({ name, league_entry_fee, weekly_entry_fee });
+    msg.innerHTML = error ? `<div class="message">${error.message}</div>` : '<div class="message success">Season created.</div>';
+    if (!error) { document.getElementById('seasonName').value = ''; await loadSeasons(); }
+}
+
+async function setCurrentSeason(id) {
+    await supabase.from('seasons').update({ is_current: false }).neq('id', id);
+    const { error } = await supabase.from('seasons').update({ is_current: true }).eq('id', id);
+    if (!error) await loadSeasons();
+}
+
+async function loadEntrants(seasonId) {
+    if (!seasonId) return;
+    const { data, error } = await supabase.from('league_entrants').select('*').eq('season_id', seasonId).order('participant_name');
+    document.getElementById('entrantsBody').innerHTML = (data && data.length)
+        ? data.map(e => `<tr><td>${escapeHtml(e.participant_name)}</td><td>${escapeHtml(e.league_access_code)}</td><td>${e.active ? 'Yes' : 'No'}</td></tr>`).join('')
+        : `<tr><td colspan="3" class="setup-note">${error ? error.message : 'No entrants yet.'}</td></tr>`;
+}
+
+document.addEventListener('change', e => {
+    if (e.target.id === 'entrantSeason') loadEntrants(e.target.value);
+    if (e.target.id === 'roundSeason') loadRounds(e.target.value);
+});
+
+async function addEntrant() {
+    const season_id = document.getElementById('entrantSeason').value;
+    const participant_name = document.getElementById('entrantName').value.trim();
+    const league_access_code = document.getElementById('entrantCode').value.trim();
+    const msg = document.getElementById('entrantMessage');
+    if (!season_id || !participant_name || !league_access_code) {
+        msg.innerHTML = '<div class="message">Season, name, and code are all required.</div>';
+        return;
+    }
+    const { error } = await supabase.from('league_entrants')
+        .upsert({ season_id, participant_name, league_access_code }, { onConflict: 'season_id,participant_name' });
+    msg.innerHTML = error ? `<div class="message">${error.message}</div>` : '<div class="message success">Entrant saved.</div>';
+    if (!error) {
+        document.getElementById('entrantName').value = '';
+        document.getElementById('entrantCode').value = '';
+        await loadEntrants(season_id);
+    }
+}
+
+async function loadRounds(seasonId) {
+    if (!seasonId) return;
+    const { data, error } = await supabase.from('rounds').select('*').eq('season_id', seasonId).order('round_number', { ascending: false });
+    document.getElementById('roundsBody').innerHTML = (data && data.length)
+        ? data.map(r => `<tr><td>${r.round_number}</td><td>${new Date(r.opens_at).toLocaleString()}</td><td>${new Date(r.closes_at).toLocaleString()}</td></tr>`).join('')
+        : `<tr><td colspan="3" class="setup-note">${error ? error.message : 'No rounds yet.'}</td></tr>`;
+
+    document.getElementById('resultRound').innerHTML = (data || [])
+        .map(r => `<option value="${r.id}">Round ${r.round_number}</option>`).join('');
+}
+
+async function createRound() {
+    const season_id = document.getElementById('roundSeason').value;
+    const round_number = parseInt(document.getElementById('roundNumber').value, 10);
+    const weekly_round_code = document.getElementById('roundCode').value.trim();
+    const opensLocal = document.getElementById('roundOpens').value;
+    const closesLocal = document.getElementById('roundCloses').value;
+    const msg = document.getElementById('roundMessage');
+
+    if (!season_id || !round_number || !weekly_round_code || !opensLocal || !closesLocal) {
+        msg.innerHTML = '<div class="message">All fields are required.</div>';
+        return;
+    }
+
+    const { error } = await supabase.from('rounds').upsert({
+        season_id,
+        round_number,
+        weekly_round_code,
+        opens_at: new Date(opensLocal).toISOString(),
+        closes_at: new Date(closesLocal).toISOString()
+    }, { onConflict: 'season_id,round_number' });
+
+    msg.innerHTML = error ? `<div class="message">${error.message}</div>` : '<div class="message success">Round saved.</div>';
+    if (!error) await loadRounds(season_id);
+}
+
+async function enterResult() {
+    const round_id = document.getElementById('resultRound').value;
+    const winner = document.getElementById('resultWinner').value.trim();
+    const checkout = parseInt(document.getElementById('resultCheckout').value, 10);
+    const total_180s = parseInt(document.getElementById('resultTotal180s').value, 10);
+    const msg = document.getElementById('resultMessage');
+
+    if (!round_id || !winner || isNaN(checkout) || isNaN(total_180s)) {
+        msg.innerHTML = '<div class="message">All fields are required.</div>';
+        return;
+    }
+
+    const { error } = await supabase.from('match_results')
+        .upsert({ round_id, winner, checkout, total_180s }, { onConflict: 'round_id' });
+
+    msg.innerHTML = error ? `<div class="message">${error.message}</div>` : '<div class="message success">Result saved — scoring updated.</div>';
+    if (!error) {
+        document.getElementById('resultWinner').value = '';
+        document.getElementById('resultCheckout').value = '';
+        document.getElementById('resultTotal180s').value = '';
+    }
+}
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>

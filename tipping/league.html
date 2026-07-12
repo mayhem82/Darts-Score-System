@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>League Dashboard — Bellbrook Darts Club</title>
+<link rel="stylesheet" href="tipping.css">
+</head>
+<body>
+
+<div class="club-header">
+    <div class="club-mark">🎯</div>
+    <div class="club-name">Bellbrook Darts Club</div>
+    <div class="club-sub">Season League</div>
+</div>
+
+<main>
+    <h1>League Dashboard</h1>
+    <div id="configWarning"></div>
+
+    <section>
+        <div class="pot-figure" id="poolFigure">—</div>
+        <div class="pot-label">Season Prize Pool</div>
+    </section>
+
+    <section>
+        <p class="setup-note" id="roundInfo">Loading…</p>
+    </section>
+
+    <section id="podiumSection" style="display:none;">
+        <h2>Top 3</h2>
+        <div class="podium" id="podium"></div>
+    </section>
+
+    <section id="prevWinnerSection" style="display:none;">
+        <h2>Previous Round Winner</h2>
+        <p class="setup-note" id="prevWinner"></p>
+    </section>
+
+    <section>
+        <h2>Full Leaderboard</h2>
+        <div class="table-scroll">
+            <table id="leaderboardTable">
+                <thead>
+                    <tr><th>#</th><th>Player</th><th class="num">Rounds</th><th class="num">Points</th></tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                    <tr><td colspan="4" class="setup-note">Loading…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <a class="back-link" href="index.html">← Submit Tips</a>
+    <a class="back-link" href="weekly.html">View Weekly Dashboard →</a>
+</main>
+
+<div class="club-footer">
+    Bellbrook Hotel · Darts Club Tipping · v1.0
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script>
+async function init() {
+    document.getElementById('configWarning').innerHTML = configWarning();
+    if (CONFIG_PLACEHOLDER) {
+        document.getElementById('roundInfo').textContent = 'Waiting on Supabase setup.';
+        return;
+    }
+    try {
+        const season = await getCurrentSeason();
+        if (!season) {
+            document.getElementById('roundInfo').textContent = 'No season is currently running.';
+            return;
+        }
+
+        const [pool, leaderboard, rounds] = await Promise.all([
+            leaguePrizePool(season.id),
+            leagueLeaderboard(season.id),
+            getRounds(season.id)
+        ]);
+
+        document.getElementById('poolFigure').textContent = money(pool);
+
+        const current = rounds.find(r => {
+            const now = new Date();
+            return new Date(r.opens_at) <= now && now < new Date(r.closes_at);
+        }) || rounds[0];
+        document.getElementById('roundInfo').textContent = current
+            ? `Current Round: ${current.round_number}`
+            : 'No rounds scheduled yet.';
+
+        renderPodium(leaderboard);
+        renderTable(leaderboard);
+        await renderPrevWinner(rounds, current);
+    } catch (e) {
+        document.getElementById('roundInfo').textContent = 'Could not reach the tipping server.';
+        console.error(e);
+    }
+}
+
+function renderPodium(rows) {
+    if (!rows.length) return;
+    const top3 = rows.slice(0, 3);
+    const slots = ['first', 'second', 'third'];
+    const podium = document.getElementById('podium');
+    podium.innerHTML = top3.map((r, i) => `
+        <div class="podium-slot ${slots[i]}">
+            <div class="podium-rank">${i + 1}</div>
+            <div class="podium-name">${escapeHtml(r.participant_name)}</div>
+            <div class="podium-points">${r.total_points} pts</div>
+        </div>
+    `).join('');
+    document.getElementById('podiumSection').style.display = '';
+}
+
+function renderTable(rows) {
+    const body = document.getElementById('leaderboardBody');
+    if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="4" class="setup-note">No tips scored yet.</td></tr>';
+        return;
+    }
+    body.innerHTML = rows.map((r, i) => `
+        <tr>
+            <td>${i + 1}</td>
+            <td>${escapeHtml(r.participant_name)}</td>
+            <td class="num">${r.rounds_played}</td>
+            <td class="num">${r.total_points}</td>
+        </tr>
+    `).join('');
+}
+
+async function renderPrevWinner(rounds, current) {
+    const past = rounds.filter(r => !current || r.round_number < current.round_number);
+    if (!past.length) return;
+    const prevRound = past[0];
+    const points = await roundPoints(prevRound.id);
+    const leagueRows = points
+        .filter(p => p.competition_type === 'league')
+        .sort((a, b) => b.points - a.points);
+    if (leagueRows.length) {
+        document.getElementById('prevWinner').textContent =
+            `Round ${prevRound.round_number}: ${leagueRows[0].participant_name} (${leagueRows[0].points} pts)`;
+        document.getElementById('prevWinnerSection').style.display = '';
+    }
+}
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>
