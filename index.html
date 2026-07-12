@@ -704,6 +704,12 @@
 
     <div class="player-list" id="setupPlayerList"></div>
 
+    <h2>Practice Mode</h2>
+    <p class="setup-note">Play a full game without saving anything — not to this device's history, and there's nothing to publish to Club History afterwards. Use this for testing or a knockabout that shouldn't count.</p>
+    <div class="game-select">
+        <button id="practiceModeBtn" class="secondary" onclick="togglePracticeMode()">Practice Mode: Off</button>
+    </div>
+
     <button onclick="startGame()" id="startGameBtn" disabled>Start Game</button>
 
     <div class="dart-input" style="margin-top: 30px;">
@@ -784,13 +790,14 @@
         <h1 id="winnerName"></h1>
         <h2>🎯 WINS! 🎯</h2>
         <div id="pintTag" class="message success" style="display: none;">🍺 Bonus round — winner takes the pint!</div>
+        <div id="practiceTag" class="message" style="display: none;">🧪 Practice Mode — this game was not saved anywhere.</div>
 
         <div class="history" id="winnerHistory" style="max-height: 300px; margin: 20px 0;"></div>
 
         <button class="secondary" id="bonusRoundBtn" onclick="openBonusRound()" style="display: none;">🍺 Bonus Round — Pint Shootout</button>
         <button onclick="downloadHistory()">Download Game History</button>
-        <button class="secondary" onclick="saveMatchToRepo()">Publish to Club History</button>
-        <p class="setup-note" style="margin: 5px 0; font-size: 15px;">This game is already saved on this device — see <a href="history.html" style="color: #c9a13b;">Club History</a>. Publishing puts it on the club site for everyone (needs the club GitHub login).</p>
+        <button class="secondary" onclick="saveMatchToRepo()" id="publishBtn">Publish to Club History</button>
+        <p class="setup-note" style="margin: 5px 0; font-size: 15px;" id="publishNote">This game is already saved on this device — see <a href="history.html" style="color: #c9a13b;">Club History</a>. Publishing puts it on the club site for everyone (needs the club GitHub login).</p>
         <button onclick="newMatch()">Start New Match</button>
     </div>
 </div>
@@ -1035,8 +1042,16 @@ let gameState = {
     history: [],
     turnStartScore: null,
     claimedNumbers: [],
-    bonusPint: false
+    bonusPint: false,
+    practiceMode: false
 };
+
+function togglePracticeMode() {
+    gameState.practiceMode = !gameState.practiceMode;
+    const btn = document.getElementById('practiceModeBtn');
+    btn.textContent = 'Practice Mode: ' + (gameState.practiceMode ? 'On' : 'Off');
+    btn.classList.toggle('secondary', !gameState.practiceMode);
+}
 
 function selectPlaces(n) {
     gameState.places = n;
@@ -3200,6 +3215,7 @@ function buildMatchRecord() {
 }
 
 function saveMatchLocally() {
+    if (gameState.practiceMode) return;
     try {
         lastMatchRecord = buildMatchRecord();
         const key = 'bbdc-matches';
@@ -3247,6 +3263,12 @@ function updateBonusButton() {
         contenders.length >= 2 ? 'block' : 'none';
     document.getElementById('pintTag').style.display =
         gameState.bonusPint ? 'block' : 'none';
+    document.getElementById('practiceTag').style.display =
+        gameState.practiceMode ? 'block' : 'none';
+    document.getElementById('publishBtn').style.display =
+        gameState.practiceMode ? 'none' : 'block';
+    document.getElementById('publishNote').style.display =
+        gameState.practiceMode ? 'none' : 'block';
 }
 
 function openBonusRound() {
@@ -3541,7 +3563,8 @@ function resetGame() {
         history: [],
         turnStartScore: null,
         claimedNumbers: [],
-        bonusPint: false
+        bonusPint: false,
+        practiceMode: false
     };
 
     killerState = {
@@ -3583,6 +3606,10 @@ function resetGame() {
             document.getElementById(prefix + 'PlacesBtn' + i).classList.toggle('secondary', i !== 2);
         }
     });
+
+    // Reset practice mode toggle
+    document.getElementById('practiceModeBtn').textContent = 'Practice Mode: Off';
+    document.getElementById('practiceModeBtn').classList.add('secondary');
 
     checkStartButton();
 
