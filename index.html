@@ -969,6 +969,8 @@
             Dart <span id="shanghaiDartNumber">1</span> of 3 · Your number: <span id="shanghaiTarget" style="color: #c9a13b; font-weight: 700;"></span>
         </div>
 
+        <div id="shanghaiPendingBanner" class="message success" style="display: none;">Shanghai complete! Keep logging any darts already thrown this turn — it'll finish once the turn ends.</div>
+
         <div class="label">What Did the Dart Hit?</div>
         <div class="multiplier-grid">
             <button class="multiplier-btn" id="shSingleBtn" onclick="shanghaiHit('single')">Single</button>
@@ -983,7 +985,7 @@
         <div class="label">This Turn</div>
     </div>
 
-    <button onclick="endShanghaiTurn()" id="endShanghaiTurnBtn">End Turn</button>
+    <button onclick="manualEndShanghaiTurn()" id="endShanghaiTurnBtn">End Turn</button>
 
     <button class="danger" onclick="confirmReset()">Reset Game</button>
 
@@ -995,7 +997,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a> &nbsp;·&nbsp; <a href="tipping/index.html">Tipping</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v3.2</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v3.3</span>
 </footer>
 
 <!-- Persistent broadcast control — reachable from any screen mid-game,
@@ -1535,6 +1537,10 @@ function updateRemainingScore() {
 }
 
 function endTurn() {
+    if (gameState.currentDarts.length < 3) {
+        if (!confirm(`You've only entered ${gameState.currentDarts.length} of 3 darts this turn. End the turn anyway?`)) return;
+    }
+
     const player = gameState.players[gameState.currentPlayerIndex];
     const turnTotal = gameState.currentDarts.reduce((sum, d) => sum + d.score, 0);
     const newScore = gameState.turnStartScore - turnTotal;
@@ -2183,6 +2189,9 @@ function undoKillerDart() {
 }
 
 function endKillerTurn() {
+    if (killerState.currentDarts.length < 3) {
+        if (!confirm(`You've only entered ${killerState.currentDarts.length} of 3 darts this turn. End the turn anyway?`)) return;
+    }
     gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
     startKillerTurn();
 }
@@ -2501,7 +2510,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.2', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.3', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
@@ -2552,7 +2561,8 @@ let shanghaiState = {
     selectedNumber: null,
     claimOrder: [],
     currentDarts: [],
-    placings: []
+    placings: [],
+    pendingComplete: false
 };
 
 function shanghaiThrowOrderLabel(n) {
@@ -2745,11 +2755,13 @@ function startShanghaiTurn() {
 
     const player = gameState.players[gameState.currentPlayerIndex];
     shanghaiState.currentDarts = [];
+    shanghaiState.pendingComplete = false;
 
     document.getElementById('shanghaiCurrentPlayer').textContent = player.name + "'s Turn";
     document.getElementById('shanghaiDartNumber').textContent = '1';
     document.getElementById('shanghaiTarget').textContent = player.claimedNumber;
     document.getElementById('undoShanghaiBtn').disabled = true;
+    document.getElementById('shanghaiPendingBanner').style.display = 'none';
 
     renderShanghaiScoreboard();
     renderShanghaiDartDisplay();
@@ -2774,19 +2786,15 @@ function shanghaiHit(type) {
 
     document.getElementById('undoShanghaiBtn').disabled = false;
 
-    // Complete: single + double + triple all hit
+    // Single + double + triple all hit: the outcome is locked in, but don't
+    // cut the turn short — real darts throws all 3 before the scorer can
+    // react, so keep the turn open and finish it once the turn itself ends
+    // (3 darts entered, or the scorer ends it early).
     if (player.shHits.single && player.shHits.double && player.shHits.triple) {
-        completeShanghai(player);
-        return;
+        shanghaiState.pendingComplete = true;
     }
 
-    document.getElementById('shanghaiDartNumber').textContent =
-        Math.min(shanghaiState.currentDarts.length + 1, 3);
-
-    renderShanghaiScoreboard();
-    renderShanghaiDartDisplay();
-    updateShanghaiHitButtons();
-    renderShanghaiHistory();
+    finishShanghaiDartEntry(player);
 }
 
 function shanghaiMiss() {
@@ -2801,12 +2809,26 @@ function shanghaiMiss() {
     });
 
     document.getElementById('undoShanghaiBtn').disabled = false;
+
+    finishShanghaiDartEntry(player);
+}
+
+function finishShanghaiDartEntry(player) {
     document.getElementById('shanghaiDartNumber').textContent =
         Math.min(shanghaiState.currentDarts.length + 1, 3);
+    document.getElementById('shanghaiPendingBanner').style.display =
+        shanghaiState.pendingComplete ? 'block' : 'none';
 
+    renderShanghaiScoreboard();
     renderShanghaiDartDisplay();
     updateShanghaiHitButtons();
     renderShanghaiHistory();
+
+    // Turn is over (all 3 darts logged) and the win condition was met at
+    // some point this turn: finalize now, not before.
+    if (shanghaiState.currentDarts.length >= 3 && shanghaiState.pendingComplete) {
+        completeShanghai(player);
+    }
 }
 
 function undoShanghaiDart() {
@@ -2818,6 +2840,10 @@ function undoShanghaiDart() {
     if (removedDart.type !== 'miss' && removedDart.wasNew) {
         player.shHits[removedDart.type] = false;
     }
+
+    shanghaiState.pendingComplete = !!(player.shHits.single && player.shHits.double && player.shHits.triple);
+    document.getElementById('shanghaiPendingBanner').style.display =
+        shanghaiState.pendingComplete ? 'block' : 'none';
 
     // Remove last history entry
     gameState.history.shift();
@@ -2875,6 +2901,23 @@ function completeShanghai(player) {
 function endShanghaiTurn() {
     gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
     startShanghaiTurn();
+}
+
+// Handles the "End Turn" button specifically (manual, scorer-triggered),
+// as opposed to endShanghaiTurn() which completeShanghai() also calls
+// internally once a turn is fully finalized. Warns if the scorer is
+// ending a turn with darts still unentered, and routes a pending
+// Shanghai completion through completeShanghai() rather than just
+// advancing to the next player.
+function manualEndShanghaiTurn() {
+    if (shanghaiState.currentDarts.length < 3) {
+        if (!confirm(`You've only entered ${shanghaiState.currentDarts.length} of 3 darts this turn. End the turn anyway?`)) return;
+    }
+    if (shanghaiState.pendingComplete) {
+        completeShanghai(gameState.players[gameState.currentPlayerIndex]);
+    } else {
+        endShanghaiTurn();
+    }
 }
 
 function renderShanghaiDartDisplay() {
@@ -3425,6 +3468,10 @@ function undoBonusDart() {
 }
 
 function endBonusTurn() {
+    if (bonusState.darts.length < 3) {
+        if (!confirm(`You've only entered ${bonusState.darts.length} of 3 darts this turn. End the turn anyway?`)) return;
+    }
+
     const c = bonusContender();
     const total = bonusState.darts.reduce((s, d) => s + d.score, 0);
     bonusState.totals[c.name] = total;
@@ -3581,7 +3628,8 @@ function resetGame() {
         selectedNumber: null,
         claimOrder: [],
         currentDarts: [],
-        placings: []
+        placings: [],
+        pendingComplete: false
     };
 
     document.getElementById('playerNameInput').value = '';
