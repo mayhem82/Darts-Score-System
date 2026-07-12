@@ -483,15 +483,18 @@
 
 <!-- Join screen -->
 <div id="joinScreen">
-    <p class="setup-note">The scorer's phone shares the game live. Enter the room code shown on the scorer's screen.</p>
+    <p class="setup-note">The scorer's phone shares the game live. Enter the room code shown on their screen.</p>
+
+    <div class="label" style="margin-top: 18px;">Dartboard 1 Code</div>
     <input type="text" id="roomInput" placeholder="ROOM CODE" maxlength="5" autocapitalize="characters" autofocus
            onkeypress="if(event.key==='Enter') joinRoom()">
-    <div id="secondBoard" style="display: none;">
-        <input type="text" id="roomInput2" placeholder="BOARD 2 CODE" maxlength="5" autocapitalize="characters"
-               onkeypress="if(event.key==='Enter') joinRoom()">
-    </div>
+
+    <div class="label" style="margin-top: 18px;">Dartboard 2 Code (optional)</div>
+    <p class="setup-note" style="margin: 4px 0 10px;">Two games going on separate dartboards? Enter the second scorer's code too and watch both live, side by side. Leave this blank to watch just one.</p>
+    <input type="text" id="roomInput2" placeholder="ROOM CODE" maxlength="5" autocapitalize="characters"
+           onkeypress="if(event.key==='Enter') joinRoom()">
+
     <button onclick="joinRoom()">Watch Live</button>
-    <p class="setup-note" style="margin: 5px 0;"><a href="#" id="addBoardLink" onclick="toggleSecondBoard(); return false;" style="color: #c9a13b;">+ Two boards going? Add a second room code</a></p>
     <div class="setup-note" id="joinError"></div>
     <p class="setup-note">Keeping score on this phone instead? <a href="index.html" style="color: #c9a13b;">Go to the Scoreboard</a>.</p>
 </div>
@@ -503,6 +506,16 @@
         <button class="ghost" id="tvBtn" onclick="toggleTv()">📺 Big Screen</button>
     </div>
 
+    <div id="addBoardRow" class="center" style="margin-bottom: 10px;">
+        <a href="#" id="addBoardLink" onclick="showAddBoard(); return false;" style="color: #c9a13b;">+ Watching a second dartboard too?</a>
+    </div>
+    <div id="addBoardForm" style="display: none; margin-bottom: 10px;">
+        <input type="text" id="addBoardInput" placeholder="DARTBOARD 2 CODE" maxlength="5" autocapitalize="characters"
+               onkeypress="if(event.key==='Enter') addSecondBoard()">
+        <button class="ghost" style="width: 100%;" onclick="addSecondBoard()">Add Board</button>
+        <div class="setup-note" id="addBoardError" style="margin: 8px 0;"></div>
+    </div>
+
     <div id="boards" class="boards"></div>
 </div>
 
@@ -510,7 +523,7 @@
 
 <footer class="club-footer">
     <a href="index.html">Scoreboard</a> &nbsp;·&nbsp; <a href="rules.html">House Rules</a> &nbsp;·&nbsp; <a href="history.html">Club History</a>
-    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v2.9</div>
+    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v3.0</div>
 </footer>
 
 <!-- End-of-turn quick stats card -->
@@ -541,16 +554,6 @@ let turnCardTimer = null;
 
 function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-function toggleSecondBoard() {
-    const box = document.getElementById('secondBoard');
-    const on = box.style.display === 'none';
-    box.style.display = on ? 'block' : 'none';
-    document.getElementById('addBoardLink').textContent =
-        on ? '− Back to a single board' : '+ Two boards going? Add a second room code';
-    if (on) document.getElementById('roomInput2').focus();
-    else document.getElementById('roomInput2').value = '';
 }
 
 function joinRoom() {
@@ -937,6 +940,7 @@ function connectAll(rooms) {
     const wrap = document.getElementById('boards');
     wrap.classList.toggle('dual', rooms.length > 1);
     wrap.innerHTML = rooms.map((r, i) => boardHtml(i + 1)).join('');
+    updateAddBoardVisibility();
 
     const begin = () => rooms.forEach((r, i) => startBoard(r, i + 1));
     if (TRANSPORT === 'bc') {
@@ -951,6 +955,46 @@ function connectAll(rooms) {
         };
         document.head.appendChild(s);
     }
+}
+
+// Lets a watcher who joined with just one code add a second dartboard
+// later — e.g. they used the quick single-code shortcut, or the
+// second game's scorer hadn't started sharing yet.
+function updateAddBoardVisibility() {
+    document.getElementById('addBoardRow').style.display = totalBoards >= 2 ? 'none' : 'block';
+}
+
+function showAddBoard() {
+    document.getElementById('addBoardRow').style.display = 'none';
+    document.getElementById('addBoardForm').style.display = 'block';
+    document.getElementById('addBoardInput').focus();
+}
+
+function addSecondBoard() {
+    const code = document.getElementById('addBoardInput').value.trim().toUpperCase();
+    if (code.length < 4) {
+        document.getElementById('addBoardError').textContent = 'Enter the 5-character room code from the second scorer\'s screen.';
+        return;
+    }
+    if (TRANSPORT !== 'bc' && !window.mqtt) {
+        document.getElementById('addBoardError').textContent = 'Still connecting — try again in a moment.';
+        return;
+    }
+
+    totalBoards = 2;
+    const wrap = document.getElementById('boards');
+    wrap.classList.add('dual');
+    wrap.insertAdjacentHTML('beforeend', boardHtml(2));
+    // Board 1's label had no "Board 1 ·" prefix while it was the only
+    // board; now that a second one exists, relabel it for clarity.
+    boards.forEach(b => { b._q('.board-label').textContent = `Board ${b.n} · Room ${b.room}`; });
+
+    document.getElementById('addBoardForm').style.display = 'none';
+    document.getElementById('addBoardInput').value = '';
+    document.getElementById('addBoardError').textContent = '';
+    updateAddBoardVisibility();
+
+    startBoard(code, 2);
 }
 
 const roomParam = (params.get('room') || '').toUpperCase();
