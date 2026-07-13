@@ -708,6 +708,10 @@
 
     <h2>Add Players (Min 2, Max 12)</h2>
     <input type="text" id="playerNameInput" placeholder="Enter player name" onkeypress="if(event.key==='Enter') addPlayer()">
+    <label style="display: flex; align-items: center; gap: 10px; margin: 8px 0; cursor: pointer; font-size: 16px; color: #b9ad92;">
+        <input type="checkbox" id="rememberNameCheckbox" checked style="width: auto; margin: 0;">
+        Remember this name on the Club Roster
+    </label>
     <button onclick="addPlayer()">Add Player</button>
 
     <div class="player-list" id="setupPlayerList"></div>
@@ -902,6 +906,10 @@
     <h2>Add a Late Arrival</h2>
     <div class="player-list" id="lateJoinRosterList"></div>
     <input type="text" id="lateJoinNameInput" placeholder="Enter player name" onkeypress="if(event.key==='Enter') addLateArrivalManual()">
+    <label style="display: flex; align-items: center; gap: 10px; margin: 8px 0; cursor: pointer; font-size: 16px; color: #b9ad92;">
+        <input type="checkbox" id="lateJoinRememberCheckbox" checked style="width: auto; margin: 0;">
+        Remember this name on the Club Roster
+    </label>
     <button onclick="addLateArrivalManual()">Add Player</button>
 
     <h2>Currently Playing</h2>
@@ -1064,7 +1072,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a> &nbsp;·&nbsp; <a href="tipping/index.html">Tipping</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v3.9</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v3.10</span>
 </footer>
 
 <!-- Persistent broadcast control — reachable from any screen mid-game,
@@ -1200,11 +1208,14 @@ function addPlayer() {
         away: false,
         left: false
     });
-    addToRoster(name);
+    if (document.getElementById('rememberNameCheckbox').checked) {
+        addToRoster(name);
+    }
 
     renderSetupPlayers();
     renderRosterCheckboxes();
     input.value = '';
+    document.getElementById('rememberNameCheckbox').checked = true;
     checkStartButton();
 }
 
@@ -2722,7 +2733,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.9', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.10', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
@@ -3531,14 +3542,16 @@ function addLateArrivalManual() {
     const input = document.getElementById('lateJoinNameInput');
     const name = input.value.trim();
     if (!name) return;
+    const remember = document.getElementById('lateJoinRememberCheckbox').checked;
     input.value = '';
-    addLateArrival(name);
+    document.getElementById('lateJoinRememberCheckbox').checked = true;
+    addLateArrival(name, remember);
 }
 
-function addLateArrival(name) {
+function addLateArrival(name, remember) {
     if (gameState.players.some(p => p.name === name)) return;
     if (gameState.players.length >= 12) { alert('Maximum 12 players'); return; }
-    addToRoster(name);
+    if (remember !== false) addToRoster(name);
 
     if (gameState.gameMode === 'x01') {
         gameState.players.push({
@@ -4110,6 +4123,7 @@ function resetGame() {
     };
 
     document.getElementById('playerNameInput').value = '';
+    document.getElementById('rememberNameCheckbox').checked = true;
     document.getElementById('gameTypeDisplay').textContent = '';
     document.getElementById('setupPlayerList').innerHTML = '';
 
