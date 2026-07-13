@@ -623,6 +623,7 @@
                style="font-family: var(--display); font-size: 24px; letter-spacing: 0.3em; text-align: center; text-transform: uppercase;"
                onkeypress="if(event.key==='Enter') watchLive()">
         <button class="secondary" onclick="watchLive()">📺 Watch Live</button>
+        <p class="setup-note" style="margin: 12px 0 0;">Propping a phone up to film the board? <a href="#" onclick="beBoardCamera(); return false;" style="color: #c9a13b;">📷 Be the Board Camera</a> instead.</p>
     </div>
 
     <button class="secondary" onclick="openStandaloneBonusRound()">🍺 Bonus Round — Pint Shootout</button>
@@ -1063,7 +1064,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a> &nbsp;·&nbsp; <a href="tipping/index.html">Tipping</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v3.7</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v3.8</span>
 </footer>
 
 <!-- Persistent broadcast control — reachable from any screen mid-game,
@@ -1972,6 +1973,13 @@ function watchLive() {
     location.href = url.toString();
 }
 
+function beBoardCamera() {
+    const code = document.getElementById('roleRoomInput').value.trim().toUpperCase();
+    const url = new URL('camera.html', location.href);
+    if (code) url.searchParams.set('room', code);
+    location.href = url.toString();
+}
+
 // ===== KILLER GAME FUNCTIONS =====
 
 let killerState = {
@@ -2714,7 +2722,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.7', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.8', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +

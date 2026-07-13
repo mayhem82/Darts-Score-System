@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Board Camera — Bellbrook Darts Club</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --timber: #17120d;
+            --walnut: #262019;
+            --walnut-deep: #1d1812;
+            --chalk: #ede3cc;
+            --chalk-dim: #b9ad92;
+            --brass: #c9a13b;
+            --brass-deep: #a37f24;
+            --board-red: #b23a2e;
+            --board-green: #2f6e4f;
+            --board-green-deep: #24543d;
+            --display: 'Oswald', 'Arial Narrow', system-ui, sans-serif;
+            --body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--body);
+            background: var(--timber);
+            background-image:
+                radial-gradient(ellipse at 50% -10%, rgba(201, 161, 59, 0.08) 0%, transparent 55%),
+                radial-gradient(circle at 15% 90%, rgba(47, 110, 79, 0.05) 0%, transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(178, 58, 46, 0.05) 0%, transparent 45%);
+            background-attachment: fixed;
+            color: var(--chalk);
+            min-height: 100vh;
+            padding: 15px;
+            font-size: 22px;
+        }
+
+        .club-header {
+            text-align: center;
+            padding: 18px 10px 16px;
+            margin: 0 auto 10px;
+            border-bottom: 3px double var(--brass);
+            max-width: 560px;
+        }
+
+        .club-header .club-mark { font-size: 30px; line-height: 1; margin-bottom: 6px; }
+
+        .club-header .club-name {
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 30px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .club-header .club-sub {
+            font-family: var(--display);
+            font-weight: 500;
+            font-size: 15px;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+            color: var(--brass);
+            margin-top: 6px;
+        }
+
+        main { max-width: 560px; margin: 0 auto; }
+
+        h1 {
+            text-align: center;
+            margin: 22px 0;
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: 34px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .setup-note {
+            text-align: center;
+            color: var(--chalk-dim);
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+
+        .label {
+            font-family: var(--display);
+            font-weight: 500;
+            font-size: 18px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--chalk-dim);
+            margin-bottom: 8px;
+        }
+
+        input {
+            width: 100%;
+            padding: 18px;
+            font-size: 24px;
+            font-family: var(--display);
+            letter-spacing: 0.3em;
+            text-align: center;
+            text-transform: uppercase;
+            border: 1px solid rgba(201, 161, 59, 0.4);
+            background: var(--walnut-deep);
+            color: var(--chalk);
+            border-radius: 6px;
+            margin: 12px 0;
+        }
+
+        input:focus { outline: 2px solid var(--brass); outline-offset: 1px; }
+
+        button {
+            background: var(--brass);
+            color: #1c1608;
+            border: none;
+            border-bottom: 3px solid var(--brass-deep);
+            padding: 18px 24px;
+            font-family: var(--display);
+            font-size: 19px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            margin: 12px 0;
+        }
+
+        button:active { background: var(--brass-deep); }
+        button:disabled { background: var(--walnut-deep); color: #6e6653; border-bottom-color: #33291d; cursor: not-allowed; }
+
+        button.ghost {
+            background: var(--walnut);
+            color: var(--chalk);
+            border: 1px solid rgba(201, 161, 59, 0.4);
+            border-bottom: 3px solid rgba(201, 161, 59, 0.4);
+        }
+
+        button.danger { background: var(--board-red); color: var(--chalk); border-bottom-color: #8e2c22; }
+
+        .message {
+            background: var(--board-red);
+            color: var(--chalk);
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .message.success { background: var(--board-green); }
+
+        .cam-preview {
+            width: 100%;
+            border-radius: 8px;
+            border: 2px solid var(--brass);
+            background: #000;
+            margin: 15px 0;
+            display: block;
+        }
+
+        .cam-status {
+            text-align: center;
+            font-family: var(--display);
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin: 10px 0;
+            color: var(--chalk-dim);
+        }
+
+        .cam-status.live { color: var(--board-green); }
+
+        .viewer-count {
+            text-align: center;
+            color: var(--chalk-dim);
+            margin: 6px 0 16px;
+            font-size: 18px;
+        }
+
+        .club-footer {
+            text-align: center;
+            max-width: 560px;
+            margin: 30px auto 10px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(201, 161, 59, 0.35);
+            font-size: 15px;
+            letter-spacing: 0.1em;
+            color: var(--chalk-dim);
+        }
+
+        .club-footer a { color: var(--brass); text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<header class="club-header">
+    <div class="club-mark">🎯</div>
+    <div class="club-name">Bellbrook Darts Club</div>
+    <div class="club-sub">Bellbrook Hotel · Macleay Valley</div>
+</header>
+
+<main>
+
+<h1>📷 Board Camera</h1>
+
+<!-- Join screen -->
+<div id="joinScreen">
+    <p class="setup-note">Point this phone at the dartboard and share a live video feed alongside the score. Enter the room code shown on the scorer's screen.</p>
+
+    <div class="label">Room Code</div>
+    <input type="text" id="roomInput" placeholder="ROOM CODE" maxlength="5" autocapitalize="characters" autofocus
+           onkeypress="if(event.key==='Enter') startCamera()">
+
+    <button onclick="startCamera()" id="startCameraBtn">Start Camera</button>
+    <div id="joinError"></div>
+    <p class="setup-note">Keeping score or just watching instead? <a href="index.html" style="color: #c9a13b;">Go to the Scoreboard</a>.</p>
+</div>
+
+<!-- Live camera screen -->
+<div id="liveCameraScreen" style="display: none;">
+    <div class="cam-status" id="camStatus">Connecting…</div>
+    <video id="camPreview" class="cam-preview" muted autoplay playsinline></video>
+    <div class="viewer-count" id="viewerCount"></div>
+    <p class="setup-note" id="wakeLockNote" style="display: none;">Keep this screen on and this tab open for the feed to keep streaming.</p>
+    <button class="danger" onclick="stopCamera()">Stop Camera</button>
+</div>
+
+</main>
+
+<footer class="club-footer">
+    <a href="index.html">Scoreboard</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="rules.html">House Rules</a>
+    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v3.8</div>
+</footer>
+
+<script>
+const LIVE_BROKERS = [
+    'wss://broker.emqx.io:8084/mqtt',
+    'wss://broker.hivemq.com:8884/mqtt',
+    'wss://test.mosquitto.org:8081/mqtt'
+];
+
+function signalTopic(room) {
+    return `bellbrook-darts-club/${room}/signal`;
+}
+
+function makeDeviceId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'dev-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+let cameraShare = {
+    active: false,
+    room: null,
+    deviceId: makeDeviceId(),
+    clients: [],
+    stream: null,
+    peers: new Map(),   // viewerId -> { pc, connectedAt }
+    heartbeatTimer: null,
+    pruneTimer: null,
+    wakeLock: null
+};
+
+function loadMqttLib() {
+    return new Promise((resolve, reject) => {
+        if (window.mqtt) { resolve(); return; }
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/mqtt@5/dist/mqtt.min.js';
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('Could not load the live-sharing library.'));
+        document.head.appendChild(s);
+    });
+}
+
+function showJoinError(msg) {
+    document.getElementById('joinError').innerHTML = msg ? `<div class="message">${msg}</div>` : '';
+}
+
+let remoteCameraSeen = null;
+
+async function startCamera() {
+    const room = document.getElementById('roomInput').value.trim().toUpperCase();
+    if (room.length < 4) { showJoinError("Enter the room code shown on the scorer's screen."); return; }
+
+    showJoinError('');
+    const btn = document.getElementById('startCameraBtn');
+    btn.disabled = true;
+    btn.textContent = 'Requesting camera…';
+
+    let stream;
+    try {
+        stream = await requestCameraStream();
+    } catch (err) {
+        showJoinError(cameraErrorMessage(err));
+        btn.disabled = false;
+        btn.textContent = 'Start Camera';
+        return;
+    }
+
+    cameraShare.room = room;
+    cameraShare.stream = stream;
+
+    document.getElementById('camPreview').srcObject = stream;
+    document.getElementById('joinScreen').style.display = 'none';
+    document.getElementById('liveCameraScreen').style.display = 'block';
+    document.getElementById('camStatus').textContent = 'Checking for another camera…';
+
+    try {
+        await connectSignaling(room);
+    } catch (err) {
+        document.getElementById('camStatus').textContent = 'Could not connect. Check your internet connection and try again.';
+        return;
+    }
+
+    const existing = await waitForExistingCamera(2500);
+    if (existing) {
+        teardownCamera();
+        document.getElementById('joinScreen').style.display = 'block';
+        document.getElementById('liveCameraScreen').style.display = 'none';
+        btn.disabled = false;
+        btn.textContent = 'Start Camera';
+        showJoinError('A board camera is already active for this room.');
+        return;
+    }
+
+    cameraShare.active = true;
+    const statusEl = document.getElementById('camStatus');
+    statusEl.textContent = 'Camera live';
+    statusEl.classList.add('live');
+    updateViewerCount();
+
+    publishSignal({ type: 'camera-here' }, { retain: true });
+    cameraShare.heartbeatTimer = setInterval(() => {
+        publishSignal({ type: 'camera-here' }, { retain: true });
+    }, 5000);
+    cameraShare.pruneTimer = setInterval(prunePeers, 4000);
+
+    requestWakeLock();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+}
+
+async function requestCameraStream() {
+    const constraints = {
+        video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 24 }
+        },
+        audio: false
+    };
+    try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (err) {
+        if (err.name === 'OverconstrainedError') {
+            return await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+        throw err;
+    }
+}
+
+function cameraErrorMessage(err) {
+    switch (err.name) {
+        case 'NotAllowedError': return 'Camera permission was denied. Allow camera access for this site and try again.';
+        case 'NotFoundError': return 'No camera was found on this device.';
+        case 'NotReadableError': return 'The camera is already in use by another app. Close it and try again.';
+        default: return 'Could not start the camera. Try again.';
+    }
+}
+
+function connectSignaling(room) {
+    return loadMqttLib().then(() => new Promise((resolve, reject) => {
+        let resolved = false;
+        const topic = signalTopic(room);
+        LIVE_BROKERS.forEach(url => {
+            try {
+                const client = window.mqtt.connect(url, { connectTimeout: 9000, reconnectPeriod: 5000 });
+                client.on('connect', () => {
+                    client.subscribe(topic, { qos: 1 });
+                    if (!resolved) { resolved = true; resolve(); }
+                });
+                client.on('message', (t, payload) => {
+                    if (t === topic) handleSignalMessage(payload.toString());
+                });
+                cameraShare.clients.push(client);
+            } catch (e) { /* other brokers may still work */ }
+        });
+        setTimeout(() => { if (!resolved) reject(new Error('timeout')); }, 9000);
+    }));
+}
+
+function waitForExistingCamera(ms) {
+    remoteCameraSeen = null;
+    return new Promise(resolve => setTimeout(() => resolve(remoteCameraSeen), ms));
+}
+
+function publishSignal(fields, opts) {
+    opts = opts || {};
+    if (!cameraShare.room) return;
+    const msg = Object.assign({ v: 1, from: cameraShare.deviceId, to: null, ts: Date.now() }, fields);
+    const payload = JSON.stringify(msg);
+    const topic = signalTopic(cameraShare.room);
+    cameraShare.clients.forEach(c => {
+        if (c.connected) c.publish(topic, payload, { retain: !!opts.retain, qos: opts.qos != null ? opts.qos : 0 });
+    });
+}
+
+function handleSignalMessage(raw) {
+    let msg;
+    try { msg = JSON.parse(raw); } catch (e) { return; }
+    if (!msg || msg.from === cameraShare.deviceId) return; // ignore self-echo (multi-broker + own traffic)
+
+    if (msg.type === 'camera-here') {
+        remoteCameraSeen = { id: msg.from, ts: msg.ts || Date.now() };
+        return;
+    }
+    if (msg.type === 'viewer-here') {
+        if (cameraShare.active) ensurePeerFor(msg.from);
+        return;
+    }
+    if (msg.type === 'answer' && msg.to === cameraShare.deviceId) {
+        handleAnswer(msg);
+    }
+}
+
+async function ensurePeerFor(viewerId) {
+    if (cameraShare.peers.has(viewerId)) return; // idempotent: dedupe repeated viewer-here / multi-broker echoes
+    const peerEntry = { pc: null, connectedAt: null };
+    cameraShare.peers.set(viewerId, peerEntry);
+
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    peerEntry.pc = pc;
+
+    cameraShare.stream.getTracks().forEach(track => pc.addTrack(track, cameraShare.stream));
+
+    pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'connected') {
+            peerEntry.connectedAt = Date.now();
+        }
+        updateViewerCount();
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await waitForIceGathering(pc, 3500);
+
+    publishSignal({ type: 'offer', to: viewerId, sdp: pc.localDescription.sdp }, { qos: 1 });
+}
+
+function waitForIceGathering(pc, timeoutMs) {
+    if (pc.iceGatheringState === 'complete') return Promise.resolve();
+    return new Promise(resolve => {
+        let done = false;
+        const finish = () => {
+            if (done) return;
+            done = true;
+            pc.removeEventListener('icegatheringstatechange', check);
+            resolve();
+        };
+        const check = () => { if (pc.iceGatheringState === 'complete') finish(); };
+        pc.addEventListener('icegatheringstatechange', check);
+        setTimeout(finish, timeoutMs);
+    });
+}
+
+async function handleAnswer(msg) {
+    const entry = cameraShare.peers.get(msg.from);
+    if (!entry || !entry.pc) return;
+    if (entry.pc.signalingState !== 'have-local-offer') return; // dedupe: already answered / stale
+    await entry.pc.setRemoteDescription({ type: 'answer', sdp: msg.sdp });
+}
+
+function prunePeers() {
+    cameraShare.peers.forEach((entry, viewerId) => {
+        if (!entry.pc) return;
+        const state = entry.pc.connectionState;
+        if (state === 'failed' || state === 'closed') {
+            entry.pc.close();
+            cameraShare.peers.delete(viewerId);
+            updateViewerCount();
+        }
+    });
+}
+
+function updateViewerCount() {
+    const n = Array.from(cameraShare.peers.values()).filter(e => e.pc && e.pc.connectionState === 'connected').length;
+    document.getElementById('viewerCount').textContent = n === 0 ? 'No one watching yet' : `${n} viewer${n === 1 ? '' : 's'} watching`;
+}
+
+async function requestWakeLock() {
+    if (!('wakeLock' in navigator)) {
+        document.getElementById('wakeLockNote').style.display = 'block';
+        return;
+    }
+    try {
+        cameraShare.wakeLock = await navigator.wakeLock.request('screen');
+    } catch (e) {
+        document.getElementById('wakeLockNote').style.display = 'block';
+    }
+}
+
+function onVisibilityChange() {
+    if (document.visibilityState === 'visible' && cameraShare.active) requestWakeLock();
+}
+
+function teardownCamera() {
+    if (cameraShare.heartbeatTimer) clearInterval(cameraShare.heartbeatTimer);
+    if (cameraShare.pruneTimer) clearInterval(cameraShare.pruneTimer);
+    cameraShare.heartbeatTimer = null;
+    cameraShare.pruneTimer = null;
+
+    cameraShare.peers.forEach(entry => entry.pc && entry.pc.close());
+    cameraShare.peers.clear();
+
+    if (cameraShare.stream) {
+        cameraShare.stream.getTracks().forEach(t => t.stop());
+        cameraShare.stream = null;
+    }
+
+    cameraShare.clients.forEach(c => { try { c.end(true); } catch (e) {} });
+    cameraShare.clients = [];
+
+    if (cameraShare.wakeLock) {
+        cameraShare.wakeLock.release().catch(() => {});
+        cameraShare.wakeLock = null;
+    }
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+
+    const preview = document.getElementById('camPreview');
+    if (preview) preview.srcObject = null;
+}
+
+function stopCamera() {
+    if (cameraShare.active) {
+        publishSignal({ type: 'camera-gone' }, { retain: true });
+    }
+    cameraShare.active = false;
+    teardownCamera();
+
+    document.getElementById('camStatus').classList.remove('live');
+    document.getElementById('joinScreen').style.display = 'block';
+    document.getElementById('liveCameraScreen').style.display = 'none';
+
+    const btn = document.getElementById('startCameraBtn');
+    btn.disabled = false;
+    btn.textContent = 'Start Camera';
+}
+
+window.addEventListener('pagehide', () => {
+    if (cameraShare.active) {
+        publishSignal({ type: 'camera-gone' }, { retain: true });
+    }
+});
+
+const prefillRoom = new URLSearchParams(location.search).get('room');
+if (prefillRoom) document.getElementById('roomInput').value = prefillRoom.toUpperCase();
+</script>
+</body>
+</html>

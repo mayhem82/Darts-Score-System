@@ -239,6 +239,15 @@
             margin: 12px 0;
         }
 
+        .cam-video {
+            width: 100%;
+            border-radius: 8px;
+            border: 2px solid var(--brass);
+            background: #000;
+            margin: 12px 0 0;
+            display: block;
+        }
+
         .player-score {
             display: flex;
             justify-content: space-between;
@@ -451,7 +460,8 @@
                     "rem    sb"
                     "darts  sb"
                     "darts  hist"
-                    "upd    upd";
+                    "upd    upd"
+                    "video  video";
                 align-items: start;
             }
             body.tv .boards:not(.dual) .board .board-label { grid-area: pill; }
@@ -463,6 +473,7 @@
             body.tv .boards:not(.dual) .board .darts-panel { grid-area: darts; }
             body.tv .boards:not(.dual) .board .history-panel { grid-area: hist; }
             body.tv .boards:not(.dual) .board .updated { grid-area: upd; }
+            body.tv .boards:not(.dual) .board .cam-video { grid-area: video; }
         }
 
         /* Two boards in TV mode: trim the per-board extras */
@@ -523,7 +534,7 @@
 
 <footer class="club-footer">
     <a href="index.html">Scoreboard</a> &nbsp;·&nbsp; <a href="rules.html">House Rules</a> &nbsp;·&nbsp; <a href="history.html">Club History</a> &nbsp;·&nbsp; <a href="tipping/index.html">Tipping</a>
-    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v3.7</div>
+    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v3.8</div>
 </footer>
 
 <!-- End-of-turn quick stats card -->
@@ -734,6 +745,7 @@ function boardHtml(n) {
         <div class="panel darts-panel" style="display: none;"><div class="label">This Turn</div><div class="darts-list"></div></div>
         <div class="panel history-panel" style="display: none;"><div class="label">Shot History</div><div class="history-list"></div></div>
         <div class="updated"></div>
+        <video class="cam-video" muted autoplay playsinline style="display: none;"></video>
     </section>`;
 }
 
@@ -924,6 +936,143 @@ function startBoard(room, n) {
     boards.push(board);
 }
 
+// ---- Board camera (WebRTC video, MQTT-only — same-device BC transport
+// can't carry cross-device video) ----
+
+const camDeviceId = makeCamDeviceId();
+
+function makeCamDeviceId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'dev-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+function camSignalTopic(room) {
+    return `bellbrook-darts-club/${room}/signal`;
+}
+
+function waitForIceGathering(pc, timeoutMs) {
+    if (pc.iceGatheringState === 'complete') return Promise.resolve();
+    return new Promise(resolve => {
+        let done = false;
+        const finish = () => {
+            if (done) return;
+            done = true;
+            pc.removeEventListener('icegatheringstatechange', check);
+            resolve();
+        };
+        const check = () => { if (pc.iceGatheringState === 'complete') finish(); };
+        pc.addEventListener('icegatheringstatechange', check);
+        setTimeout(finish, timeoutMs);
+    });
+}
+
+function startCameraSignal(room, n) {
+    const root = document.getElementById('board' + n);
+    const q = sel => root.querySelector(sel);
+    const topic = camSignalTopic(room);
+    const clients = [];
+
+    let activeCameraId = null;
+    let lastHeartbeat = 0;
+    let pc = null;
+    let viewerHereTimer = null;
+
+    function publish(fields, opts) {
+        opts = opts || {};
+        const msg = Object.assign({ v: 1, from: camDeviceId, to: null, ts: Date.now() }, fields);
+        const payload = JSON.stringify(msg);
+        clients.forEach(c => { if (c.connected) c.publish(topic, payload, { retain: !!opts.retain, qos: opts.qos != null ? opts.qos : 0 }); });
+    }
+
+    function showVideo(show) {
+        const v = q('.cam-video');
+        if (!v) return;
+        v.style.display = show ? 'block' : 'none';
+        if (!show) v.srcObject = null;
+    }
+
+    function teardownPeer() {
+        if (pc) { pc.close(); pc = null; }
+        if (viewerHereTimer) { clearInterval(viewerHereTimer); viewerHereTimer = null; }
+        showVideo(false);
+    }
+
+    function startHeartbeatUntilConnected() {
+        if (viewerHereTimer) clearInterval(viewerHereTimer);
+        publish({ type: 'viewer-here', to: activeCameraId });
+        viewerHereTimer = setInterval(() => {
+            if (pc && pc.connectionState === 'connected') {
+                clearInterval(viewerHereTimer);
+                viewerHereTimer = null;
+                return;
+            }
+            publish({ type: 'viewer-here', to: activeCameraId });
+        }, 4000);
+    }
+
+    async function handleOffer(msg) {
+        // Ignore duplicate delivery of the same offer -- it arrives once
+        // per connected broker (up to 3x), and would otherwise tear down
+        // and restart a negotiation that's already in progress/connected.
+        if (pc && ['new', 'connecting', 'connected'].includes(pc.connectionState)) return;
+
+        pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+        pc.ontrack = e => {
+            const v = q('.cam-video');
+            if (v) { v.srcObject = e.streams[0]; showVideo(true); }
+        };
+        pc.onconnectionstatechange = () => {
+            if (pc && ['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
+                showVideo(false);
+            }
+        };
+        await pc.setRemoteDescription({ type: 'offer', sdp: msg.sdp });
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        await waitForIceGathering(pc, 3500);
+        publish({ type: 'answer', to: msg.from, sdp: pc.localDescription.sdp }, { qos: 1 });
+    }
+
+    function handleMessage(raw) {
+        let msg;
+        try { msg = JSON.parse(raw); } catch (e) { return; }
+        if (!msg || msg.from === camDeviceId) return; // ignore self-echo (multi-broker + own traffic)
+
+        if (msg.type === 'camera-here') {
+            const isNewCamera = activeCameraId !== msg.from;
+            if (activeCameraId && isNewCamera) teardownPeer(); // camera replaced mid-session
+            activeCameraId = msg.from;
+            lastHeartbeat = msg.ts || Date.now();
+            if (isNewCamera) startHeartbeatUntilConnected();
+            return;
+        }
+        if (msg.type === 'camera-gone' && msg.from === activeCameraId) {
+            teardownPeer();
+            activeCameraId = null;
+            return;
+        }
+        if (msg.type === 'offer' && msg.to === camDeviceId && msg.from === activeCameraId) {
+            handleOffer(msg);
+        }
+    }
+
+    LIVE_BROKERS.forEach(url => {
+        try {
+            const client = window.mqtt.connect(url, { connectTimeout: 9000, reconnectPeriod: 5000 });
+            client.on('connect', () => client.subscribe(topic, { qos: 1 }));
+            client.on('message', (t, payload) => { if (t === topic) handleMessage(payload.toString()); });
+            clients.push(client);
+        } catch (e) { /* other brokers may still work */ }
+    });
+
+    setInterval(() => {
+        if (activeCameraId && Date.now() - lastHeartbeat > 15000) {
+            teardownPeer();
+            activeCameraId = null;
+        }
+    }, 4000);
+}
+
 setInterval(() => {
     boards.forEach(b => {
         if (!b.lastTs) return;
@@ -942,7 +1091,10 @@ function connectAll(rooms) {
     wrap.innerHTML = rooms.map((r, i) => boardHtml(i + 1)).join('');
     updateAddBoardVisibility();
 
-    const begin = () => rooms.forEach((r, i) => startBoard(r, i + 1));
+    const begin = () => rooms.forEach((r, i) => {
+        startBoard(r, i + 1);
+        if (TRANSPORT !== 'bc') startCameraSignal(r, i + 1);
+    });
     if (TRANSPORT === 'bc') {
         begin();
     } else {
@@ -995,6 +1147,7 @@ function addSecondBoard() {
     updateAddBoardVisibility();
 
     startBoard(code, 2);
+    if (TRANSPORT !== 'bc') startCameraSignal(code, 2);
 }
 
 const roomParam = (params.get('room') || '').toUpperCase();
