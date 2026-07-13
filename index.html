@@ -1095,6 +1095,18 @@
 </div>
 
 <script>
+// Trap the browser/OS back gesture and hardware back button. This app has
+// no real page-to-page navigation of its own (every screen change is an
+// in-app showScreen() call) — a "back" swipe or button press only ever
+// means the browser tried to leave the page, which would reload it and
+// silently wipe the in-progress game, room code, and live connection.
+// Neutralize it by keeping a spare history entry in place at all times:
+// any back navigation just lands on the same entry and gets pushed again.
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', () => {
+    history.pushState(null, '', location.href);
+});
+
 let gameState = {
     gameMode: 'x01',
     gameType: null,
