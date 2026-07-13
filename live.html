@@ -239,13 +239,27 @@
             margin: 12px 0;
         }
 
-        .cam-video {
-            width: 100%;
+        .cam-video-wrap {
             border-radius: 8px;
             border: 2px solid var(--brass);
             background: #000;
             margin: 12px 0 0;
+            overflow: hidden;
+            position: relative;
+            touch-action: none;
+        }
+
+        .cam-video {
+            width: 100%;
             display: block;
+            transform-origin: center center;
+        }
+
+        .cam-zoom-hint {
+            text-align: center;
+            color: var(--chalk-dim);
+            font-size: 14px;
+            margin: 6px 0 0;
         }
 
         .player-score {
@@ -473,7 +487,7 @@
             body.tv .boards:not(.dual) .board .darts-panel { grid-area: darts; }
             body.tv .boards:not(.dual) .board .history-panel { grid-area: hist; }
             body.tv .boards:not(.dual) .board .updated { grid-area: upd; }
-            body.tv .boards:not(.dual) .board .cam-video { grid-area: video; }
+            body.tv .boards:not(.dual) .board .cam-video-wrap { grid-area: video; }
         }
 
         /* Two boards in TV mode: trim the per-board extras */
@@ -534,7 +548,7 @@
 
 <footer class="club-footer">
     <a href="index.html">Scoreboard</a> &nbsp;·&nbsp; <a href="rules.html">House Rules</a> &nbsp;·&nbsp; <a href="history.html">Club History</a> &nbsp;·&nbsp; <a href="tipping/index.html">Tipping</a>
-    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v3.8</div>
+    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v3.9</div>
 </footer>
 
 <!-- End-of-turn quick stats card -->
@@ -745,7 +759,10 @@ function boardHtml(n) {
         <div class="panel darts-panel" style="display: none;"><div class="label">This Turn</div><div class="darts-list"></div></div>
         <div class="panel history-panel" style="display: none;"><div class="label">Shot History</div><div class="history-list"></div></div>
         <div class="updated"></div>
-        <video class="cam-video" muted autoplay playsinline style="display: none;"></video>
+        <div class="cam-video-wrap" style="display: none;">
+            <video class="cam-video" muted autoplay playsinline></video>
+        </div>
+        <div class="cam-zoom-hint" style="display: none;">Pinch or double-tap the video to zoom in on the board</div>
     </section>`;
 }
 
@@ -966,11 +983,120 @@ function waitForIceGathering(pc, timeoutMs) {
     });
 }
 
+// Pinch/double-tap/drag zoom on a camera video element, plus wheel-zoom
+// for desktop. Scales+pans the <video> itself via CSS transform inside its
+// overflow:hidden wrap, so it never disturbs the surrounding layout.
+// Returns a resetZoom() function to call whenever the feed reconnects.
+function setupVideoZoom(videoEl) {
+    const wrap = videoEl.parentElement;
+    const minScale = 1, maxScale = 4;
+    let scale = 1, panX = 0, panY = 0;
+    let startDist = 0, startScale = 1;
+    let panStartX = 0, panStartY = 0, touchStartX = 0, touchStartY = 0;
+    let isPanning = false;
+    let lastTapTime = 0;
+
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const dist = (t0, t1) => Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+
+    function clampPan() {
+        const rect = wrap.getBoundingClientRect();
+        const maxPanX = rect.width * (scale - 1) / 2;
+        const maxPanY = rect.height * (scale - 1) / 2;
+        panX = clamp(panX, -maxPanX, maxPanX);
+        panY = clamp(panY, -maxPanY, maxPanY);
+    }
+
+    function apply() {
+        videoEl.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+    }
+
+    function toggleZoomAt(clientX, clientY) {
+        if (scale > 1) {
+            scale = 1; panX = 0; panY = 0;
+        } else {
+            const rect = wrap.getBoundingClientRect();
+            scale = 2.5;
+            panX = -(clientX - rect.left - rect.width / 2) * (scale - 1);
+            panY = -(clientY - rect.top - rect.height / 2) * (scale - 1);
+            clampPan();
+        }
+        apply();
+    }
+
+    videoEl.addEventListener('touchstart', e => {
+        if (e.touches.length === 2) {
+            startDist = dist(e.touches[0], e.touches[1]);
+            startScale = scale;
+        } else if (e.touches.length === 1) {
+            const now = Date.now();
+            if (now - lastTapTime < 300) {
+                toggleZoomAt(e.touches[0].clientX, e.touches[0].clientY);
+                lastTapTime = 0;
+            } else {
+                lastTapTime = now;
+            }
+            if (scale > 1) {
+                isPanning = true;
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                panStartX = panX;
+                panStartY = panY;
+            }
+        }
+    }, { passive: true });
+
+    videoEl.addEventListener('touchmove', e => {
+        if (e.touches.length === 2 && startDist > 0) {
+            const d = dist(e.touches[0], e.touches[1]);
+            scale = clamp(startScale * (d / startDist), minScale, maxScale);
+            clampPan();
+            apply();
+            e.preventDefault();
+        } else if (e.touches.length === 1 && isPanning) {
+            panX = panStartX + (e.touches[0].clientX - touchStartX);
+            panY = panStartY + (e.touches[0].clientY - touchStartY);
+            clampPan();
+            apply();
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    videoEl.addEventListener('touchend', e => {
+        if (e.touches.length < 2) startDist = 0;
+        if (e.touches.length === 0) {
+            isPanning = false;
+            if (scale <= 1.01) { scale = 1; panX = 0; panY = 0; apply(); }
+        }
+    });
+
+    videoEl.addEventListener('dblclick', e => toggleZoomAt(e.clientX, e.clientY));
+
+    videoEl.addEventListener('wheel', e => {
+        e.preventDefault();
+        const rect = wrap.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left - rect.width / 2;
+        const offsetY = e.clientY - rect.top - rect.height / 2;
+        const prevScale = scale;
+        scale = clamp(scale * (e.deltaY < 0 ? 1.15 : 0.87), minScale, maxScale);
+        const factor = scale / prevScale;
+        panX = panX * factor - offsetX * (factor - 1);
+        panY = panY * factor - offsetY * (factor - 1);
+        clampPan();
+        apply();
+    }, { passive: false });
+
+    return function resetZoom() {
+        scale = 1; panX = 0; panY = 0; apply();
+    };
+}
+
 function startCameraSignal(room, n) {
     const root = document.getElementById('board' + n);
     const q = sel => root.querySelector(sel);
     const topic = camSignalTopic(room);
     const clients = [];
+    const resetZoom = setupVideoZoom(q('.cam-video'));
 
     let activeCameraId = null;
     let lastHeartbeat = 0;
@@ -985,10 +1111,17 @@ function startCameraSignal(room, n) {
     }
 
     function showVideo(show) {
+        const wrap = q('.cam-video-wrap');
+        const hint = q('.cam-zoom-hint');
         const v = q('.cam-video');
-        if (!v) return;
-        v.style.display = show ? 'block' : 'none';
-        if (!show) v.srcObject = null;
+        if (!wrap || !v) return;
+        wrap.style.display = show ? 'block' : 'none';
+        if (hint) hint.style.display = show ? 'block' : 'none';
+        if (show) {
+            resetZoom();
+        } else {
+            v.srcObject = null;
+        }
     }
 
     function teardownPeer() {
