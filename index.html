@@ -624,6 +624,9 @@
                onkeypress="if(event.key==='Enter') watchLive()">
         <button class="secondary" onclick="watchLive()">📺 Watch Live</button>
     </div>
+
+    <button class="secondary" onclick="openStandaloneBonusRound()">🍺 Bonus Round — Pint Shootout</button>
+    <p class="setup-note" style="margin: 5px 0 0;">No match needed — just add whoever's around and pick a format.</p>
 </div>
 
 <!-- Setup Screen -->
@@ -764,6 +767,8 @@
 
     <button class="secondary" onclick="skipCurrentPlayerToBar()">🍺 Skip Turn (At the Bar)</button>
 
+    <button class="secondary" onclick="openMidMatchBonusRound()">🍺 Bonus Round</button>
+
     <button class="danger" onclick="confirmReset()">Reset Game</button>
 
     <div class="history" id="history"></div>
@@ -809,15 +814,19 @@
 <!-- Bonus Round: setup -->
 <div id="bonusSetupScreen" class="screen">
     <h1>🍺 Bonus Round</h1>
-    <p class="setup-note">Everyone who didn't take a place throws for a pint. Scorer picks the format on the night.</p>
+    <p class="setup-note">A quick pint shootout — anyone, any time. Add or remove contenders below, then pick a format.</p>
 
-    <div class="scoreboard" id="bonusContenders"></div>
+    <h2>Contenders</h2>
+    <input type="text" id="bonusContenderNameInput" placeholder="Enter player name" onkeypress="if(event.key==='Enter') addBonusContender()">
+    <button onclick="addBonusContender()">Add Contender</button>
+    <div class="player-list" id="bonusContenders"></div>
 
     <h2>Pick the Format</h2>
     <button onclick="startBonusHigh3()">Highest 3 Darts</button>
     <button onclick="startBonusBull()">Bull Shootout</button>
-    <button class="secondary" onclick="startBonusFullGame()">Play a Full Game for It</button>
-    <button class="secondary" onclick="showScreen('winnerScreen')">← Back to Results</button>
+    <button class="secondary" id="bonusFullGameBtn" onclick="startBonusFullGame()">Play a Full Game for It</button>
+    <p class="setup-note" id="bonusFullGameNote" style="display: none;">Not available mid-match — it would end the game in progress.</p>
+    <button class="secondary" onclick="showScreen(bonusState.returnScreen || 'winnerScreen')">← Back</button>
 </div>
 
 <!-- Bonus Round: highest 3 darts -->
@@ -875,7 +884,7 @@
         <div class="history" id="bonusRecap" style="max-height: 300px; margin: 20px 0;"></div>
 
         <button onclick="newMatch()">Start New Match</button>
-        <button class="secondary" onclick="showScreen('winnerScreen')">← Back to Results</button>
+        <button class="secondary" onclick="showScreen(bonusState.returnScreen || 'winnerScreen')">← Back</button>
     </div>
 </div>
 
@@ -940,6 +949,8 @@
 
     <button class="secondary" onclick="skipCurrentPlayerToBar()">🍺 Skip Turn (At the Bar)</button>
 
+    <button class="secondary" onclick="openMidMatchBonusRound()">🍺 Bonus Round</button>
+
     <button class="danger" onclick="confirmReset()">Reset Game</button>
 
     <div class="history" id="killerHistory"></div>
@@ -999,6 +1010,8 @@
 
     <button class="secondary" onclick="skipCurrentPlayerToBar()">🍺 Skip Turn (At the Bar)</button>
 
+    <button class="secondary" onclick="openMidMatchBonusRound()">🍺 Bonus Round</button>
+
     <button class="danger" onclick="confirmReset()">Reset Game</button>
 
     <div class="history" id="shanghaiHistory"></div>
@@ -1009,7 +1022,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a> &nbsp;·&nbsp; <a href="tipping/index.html">Tipping</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v3.4</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v3.5</span>
 </footer>
 
 <!-- Persistent broadcast control — reachable from any screen mid-game,
@@ -2613,7 +2626,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.4', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.5', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
@@ -3412,8 +3425,11 @@ let bonusState = {
     selNum: null,
     selMult: 1,
     bullHits: {},     // name -> true/false this round
-    recap: []
+    recap: [],
+    returnScreen: 'winnerScreen'
 };
+
+const BONUS_MIDMATCH_SCREENS = ['gameScreen', 'killerGameScreen', 'shanghaiGameScreen'];
 
 function updateBonusButton() {
     const contenders = gameState.players.filter(p => !p.place);
@@ -3430,17 +3446,55 @@ function updateBonusButton() {
         gameState.practiceMode ? 'none' : 'block';
 }
 
-function openBonusRound() {
-    document.getElementById('bonusContenders').innerHTML = bonusState.contenders.map(c => `
-        <div class="player-score">
-            <div class="player-info"><div class="player-name">${c.name}</div></div>
+function renderBonusContenders() {
+    document.getElementById('bonusContenders').innerHTML = bonusState.contenders.map((c, i) => `
+        <div class="player-item">
+            <span>${c.name}</span>
+            <button class="secondary" onclick="removeBonusContender(${i})">Remove</button>
         </div>
     `).join('');
+
+    const midMatch = BONUS_MIDMATCH_SCREENS.includes(bonusState.returnScreen);
+    document.getElementById('bonusFullGameBtn').style.display = midMatch ? 'none' : 'block';
+    document.getElementById('bonusFullGameNote').style.display = midMatch ? 'block' : 'none';
+}
+
+function addBonusContender() {
+    const input = document.getElementById('bonusContenderNameInput');
+    const name = input.value.trim();
+    if (!name) return;
+    bonusState.contenders.push({ name });
+    input.value = '';
+    renderBonusContenders();
+}
+
+function removeBonusContender(index) {
+    bonusState.contenders.splice(index, 1);
+    renderBonusContenders();
+}
+
+function openBonusRound() {
+    bonusState.returnScreen = 'winnerScreen';
+    renderBonusContenders();
+    showScreen('bonusSetupScreen');
+}
+
+function openStandaloneBonusRound() {
+    bonusState.contenders = [];
+    bonusState.returnScreen = 'roleScreen';
+    renderBonusContenders();
+    showScreen('bonusSetupScreen');
+}
+
+function openMidMatchBonusRound() {
+    bonusState.contenders = gameState.players.map(p => ({ name: p.name }));
+    bonusState.returnScreen = document.querySelector('.screen.active')?.id || 'winnerScreen';
+    renderBonusContenders();
     showScreen('bonusSetupScreen');
 }
 
 function cancelBonus() {
-    if (confirm('Cancel the bonus round?')) showScreen('winnerScreen');
+    if (confirm('Cancel the bonus round?')) showScreen(bonusState.returnScreen || 'winnerScreen');
 }
 
 function showBonusWinner(name) {
