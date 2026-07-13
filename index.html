@@ -701,6 +701,10 @@
         </div>
     </div>
 
+    <h2>Club Roster</h2>
+    <p class="setup-note">Check off who's playing tonight. New names you add below are remembered here for next time.</p>
+    <div class="player-list" id="rosterList"></div>
+
     <h2>Add Players (Min 2, Max 12)</h2>
     <input type="text" id="playerNameInput" placeholder="Enter player name" onkeypress="if(event.key==='Enter') addPlayer()">
     <button onclick="addPlayer()">Add Player</button>
@@ -768,6 +772,8 @@
     <button class="secondary" onclick="skipCurrentPlayerToBar()">🍺 Skip Turn (At the Bar)</button>
 
     <button class="secondary" onclick="openMidMatchBonusRound()">🍺 Bonus Round</button>
+
+    <button class="secondary" onclick="openManagePlayers()">👥 Manage Players</button>
 
     <button class="danger" onclick="confirmReset()">Reset Game</button>
 
@@ -888,6 +894,37 @@
     </div>
 </div>
 
+<!-- Manage Players: mid-match late arrivals / early leavers -->
+<div id="managePlayersScreen" class="screen">
+    <h1>👥 Manage Players</h1>
+
+    <h2>Add a Late Arrival</h2>
+    <div class="player-list" id="lateJoinRosterList"></div>
+    <input type="text" id="lateJoinNameInput" placeholder="Enter player name" onkeypress="if(event.key==='Enter') addLateArrivalManual()">
+    <button onclick="addLateArrivalManual()">Add Player</button>
+
+    <h2>Currently Playing</h2>
+    <div class="player-list" id="managePlayersActiveList"></div>
+
+    <div id="managePlayersLeftSection" style="display: none;">
+        <h2>Left Early</h2>
+        <div class="player-list" id="managePlayersLeftList"></div>
+    </div>
+
+    <button class="secondary" onclick="closeManagePlayers()">← Back to Game</button>
+</div>
+
+<!-- Late arrival: claim a number (Killer/Shanghai only) -->
+<div id="lateJoinClaimScreen" class="screen">
+    <h1>Claim a Number</h1>
+    <p class="setup-note" id="lateJoinClaimIntro"></p>
+
+    <div class="number-grid" id="lateJoinClaimGrid"></div>
+
+    <button onclick="confirmLateJoinClaim()" id="confirmLateJoinBtn" disabled>Claim &amp; Join</button>
+    <button class="secondary" onclick="cancelLateJoinClaim()">Cancel</button>
+</div>
+
 <!-- Killer Setup Screen -->
 <div id="killerSetupScreen" class="screen">
     <h1>Killer — Claim Numbers</h1>
@@ -951,6 +988,8 @@
 
     <button class="secondary" onclick="openMidMatchBonusRound()">🍺 Bonus Round</button>
 
+    <button class="secondary" onclick="openManagePlayers()">👥 Manage Players</button>
+
     <button class="danger" onclick="confirmReset()">Reset Game</button>
 
     <div class="history" id="killerHistory"></div>
@@ -1012,6 +1051,8 @@
 
     <button class="secondary" onclick="openMidMatchBonusRound()">🍺 Bonus Round</button>
 
+    <button class="secondary" onclick="openManagePlayers()">👥 Manage Players</button>
+
     <button class="danger" onclick="confirmReset()">Reset Game</button>
 
     <div class="history" id="shanghaiHistory"></div>
@@ -1022,7 +1063,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a> &nbsp;·&nbsp; <a href="tipping/index.html">Tipping</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v3.5</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v3.6</span>
 </footer>
 
 <!-- Persistent broadcast control — reachable from any screen mid-game,
@@ -1143,10 +1184,13 @@ function addPlayer() {
         score: 0,
         turns: 0,
         totalScored: 0,
-        away: false
+        away: false,
+        left: false
     });
+    addToRoster(name);
 
     renderSetupPlayers();
+    renderRosterCheckboxes();
     input.value = '';
     checkStartButton();
 }
@@ -1154,6 +1198,37 @@ function addPlayer() {
 function removePlayer(index) {
     gameState.players.splice(index, 1);
     renderSetupPlayers();
+    renderRosterCheckboxes();
+    checkStartButton();
+}
+
+function renderRosterCheckboxes() {
+    const roster = loadRoster();
+    const list = document.getElementById('rosterList');
+    if (!list) return;
+    list.innerHTML = roster.length ? roster.map(name => `
+        <div class="player-item">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" style="width: auto; margin: 0;" ${gameState.players.some(p => p.name === name) ? 'checked' : ''}
+                       onchange="toggleRosterPlayer('${name.replace(/'/g, "\\'")}', this.checked)">
+                ${name}
+            </label>
+            <button class="secondary" onclick="removeFromRoster('${name.replace(/'/g, "\\'")}'); renderRosterCheckboxes();">✕</button>
+        </div>
+    `).join('') : '<p class="setup-note">No saved players yet — add someone below and they\'ll be remembered here.</p>';
+}
+
+function toggleRosterPlayer(name, checked) {
+    if (checked) {
+        if (gameState.players.some(p => p.name === name)) return;
+        if (gameState.players.length >= 12) { alert('Maximum 12 players'); renderRosterCheckboxes(); return; }
+        gameState.players.push({ name, score: 0, turns: 0, totalScored: 0, away: false, left: false });
+    } else {
+        const idx = gameState.players.findIndex(p => p.name === name);
+        if (idx !== -1) gameState.players.splice(idx, 1);
+    }
+    renderSetupPlayers();
+    renderRosterCheckboxes();
     checkStartButton();
 }
 
@@ -1195,6 +1270,7 @@ function startX01Game() {
         p.finished = false;
         p.place = null;
         p.away = false;
+        p.left = false;
     });
     gameState.currentPlayerIndex = 0;
     gameState.history = [];
@@ -1215,6 +1291,7 @@ function startKillerGame() {
         p.eliminated = false;
         p.place = null;
         p.away = false;
+        p.left = false;
     });
     gameState.currentPlayerIndex = 0;
     gameState.history = [];
@@ -1674,10 +1751,10 @@ function nextPlayer() {
         }
     }
 
-    // Skip players who have already taken a place, or are away from the board
+    // Skip players who have already taken a place, are away from the board, or have left for the night
     do {
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
-    } while (gameState.players[gameState.currentPlayerIndex].finished || gameState.players[gameState.currentPlayerIndex].away);
+    } while (gameState.players[gameState.currentPlayerIndex].finished || gameState.players[gameState.currentPlayerIndex].away || gameState.players[gameState.currentPlayerIndex].left);
     showScreen('gameScreen');
     startTurn();
 }
@@ -1686,7 +1763,7 @@ function nextPlayer() {
 
 function eligiblePlayerCount(excludeIndex) {
     return gameState.players.filter((p, i) =>
-        i !== excludeIndex && !p.finished && !p.eliminated && !p.away
+        i !== excludeIndex && !p.finished && !p.eliminated && !p.away && !p.left
     ).length;
 }
 
@@ -1838,9 +1915,9 @@ function renderScoreboard() {
     const board = document.getElementById('scoreboard');
     board.innerHTML = gameState.players.map((player, i) => {
         const avg = player.turns > 0 ? (player.totalScored / player.turns).toFixed(1) : '0.0';
-        const isCurrent = i === gameState.currentPlayerIndex && !player.finished && !player.away;
-        const finishedStyle = (player.finished || player.away) ? 'opacity: 0.65;' : '';
-        const awayText = player.away ? ' 🍺 At the Bar' : '';
+        const isCurrent = i === gameState.currentPlayerIndex && !player.finished && !player.away && !player.left;
+        const finishedStyle = (player.finished || player.away || player.left) ? 'opacity: 0.65;' : '';
+        const awayText = player.left ? ' 🚪 Left' : (player.away ? ' 🍺 At the Bar' : '');
         const scoreHtml = player.finished
             ? `<div class="score-display" style="font-size: 22px; color: #c9a13b;">${shanghaiOrdinal(player.place).toUpperCase()}</div>`
             : `<div class="score-display">${player.score}</div>`;
@@ -2012,13 +2089,13 @@ function startKillerPlay() {
 function renderKillerScoreboard() {
     const board = document.getElementById('killerScoreboard');
     board.innerHTML = gameState.players.map((player, i) => {
-        const isCurrent = i === gameState.currentPlayerIndex && !player.eliminated && !player.away;
+        const isCurrent = i === gameState.currentPlayerIndex && !player.eliminated && !player.away && !player.left;
         const numText = player.claimedNumber === 25 ? 'Bull 25' :
                        player.claimedNumber === 50 ? 'Bull 50' :
                        player.claimedNumber;
 
-        const eliminatedStyle = player.eliminated ? 'opacity: 0.5; text-decoration: line-through;' : (player.away ? 'opacity: 0.65;' : '');
-        const eliminatedText = player.eliminated ? ' - ELIMINATED' : (player.away ? ' 🍺 At the Bar' : '');
+        const eliminatedStyle = player.eliminated ? 'opacity: 0.5; text-decoration: line-through;' : ((player.away || player.left) ? 'opacity: 0.65;' : '');
+        const eliminatedText = player.eliminated ? ' - ELIMINATED' : (player.left ? ' 🚪 Left' : (player.away ? ' 🍺 At the Bar' : ''));
 
         return `
             <div class="player-score ${isCurrent ? 'current' : ''}" style="${eliminatedStyle}">
@@ -2054,8 +2131,8 @@ function startKillerTurn() {
         }
     }
 
-    // Skip eliminated or away players
-    while (gameState.players[gameState.currentPlayerIndex].eliminated || gameState.players[gameState.currentPlayerIndex].away) {
+    // Skip eliminated, away, or left players
+    while (gameState.players[gameState.currentPlayerIndex].eliminated || gameState.players[gameState.currentPlayerIndex].away || gameState.players[gameState.currentPlayerIndex].left) {
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
     }
 
@@ -2626,7 +2703,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.5', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.6', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
@@ -2693,6 +2770,7 @@ function startShanghaiGame() {
         p.finished = false;
         p.place = null;
         p.away = false;
+        p.left = false;
     });
     gameState.currentPlayerIndex = 0;
     gameState.history = [];
@@ -2825,7 +2903,7 @@ function startShanghaiPlay() {
 function renderShanghaiScoreboard() {
     const board = document.getElementById('shanghaiScoreboard');
     board.innerHTML = gameState.players.map((player, i) => {
-        const isCurrent = i === gameState.currentPlayerIndex && !player.finished && !player.away;
+        const isCurrent = i === gameState.currentPlayerIndex && !player.finished && !player.away && !player.left;
 
         let status;
         if (player.finished) {
@@ -2835,8 +2913,8 @@ function renderShanghaiScoreboard() {
             status = `Single ${seg('single')} · Double ${seg('double')} · Triple ${seg('triple')}`;
         }
 
-        const finishedStyle = (player.finished || player.away) ? 'opacity: 0.65;' : '';
-        const awayText = player.away ? ' 🍺 At the Bar' : '';
+        const finishedStyle = (player.finished || player.away || player.left) ? 'opacity: 0.65;' : '';
+        const awayText = player.left ? ' 🚪 Left' : (player.away ? ' 🍺 At the Bar' : '');
         const placeText = player.finished ? shanghaiOrdinal(player.place).toUpperCase() : '';
 
         return `
@@ -2877,8 +2955,8 @@ function startShanghaiTurn() {
         }
     }
 
-    // Skip finished or away players
-    while (gameState.players[gameState.currentPlayerIndex].finished || gameState.players[gameState.currentPlayerIndex].away) {
+    // Skip finished, away, or left players
+    while (gameState.players[gameState.currentPlayerIndex].finished || gameState.players[gameState.currentPlayerIndex].away || gameState.players[gameState.currentPlayerIndex].left) {
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
     }
 
@@ -3357,6 +3435,219 @@ async function toggleLiveShare() {
 
 // ===== END LIVE SHARING =====
 
+// ===== CLUB ROSTER (saved players, remembered on this device) =====
+
+function loadRoster() {
+    try { return JSON.parse(localStorage.getItem('bbdc-roster') || '[]'); }
+    catch (e) { return []; }
+}
+
+function saveRoster(names) {
+    try { localStorage.setItem('bbdc-roster', JSON.stringify(names)); }
+    catch (e) { /* private browsing etc. — roster just won't persist */ }
+}
+
+function addToRoster(name) {
+    const roster = loadRoster();
+    if (!roster.some(n => n.toLowerCase() === name.toLowerCase())) {
+        roster.push(name);
+        saveRoster(roster);
+    }
+}
+
+function removeFromRoster(name) {
+    saveRoster(loadRoster().filter(n => n !== name));
+}
+
+// ===== END CLUB ROSTER =====
+
+// ===== MANAGE PLAYERS (mid-match late arrivals / early leavers) =====
+
+let managePlayersReturnScreen = 'gameScreen';
+let lateJoinState = { name: null };
+let lateJoinSelectedNumber = null;
+
+function openManagePlayers() {
+    managePlayersReturnScreen = document.querySelector('.screen.active')?.id || 'gameScreen';
+    renderManagePlayers();
+    showScreen('managePlayersScreen');
+}
+
+function closeManagePlayers() {
+    showScreen(managePlayersReturnScreen);
+}
+
+function renderCurrentModeScoreboard() {
+    if (gameState.gameMode === 'x01') renderScoreboard();
+    else if (gameState.gameMode === 'killer') renderKillerScoreboard();
+    else renderShanghaiScoreboard();
+}
+
+function renderManagePlayers() {
+    const roster = loadRoster();
+    const activeNames = gameState.players.map(p => p.name);
+    const available = roster.filter(name => !activeNames.includes(name));
+    document.getElementById('lateJoinRosterList').innerHTML = available.length ? available.map(name => `
+        <div class="player-item">
+            <span>${name}</span>
+            <button class="secondary" onclick="addLateArrival('${name.replace(/'/g, "\\'")}')">Add</button>
+        </div>
+    `).join('') : '<p class="setup-note">Nobody else on the roster right now.</p>';
+
+    const active = gameState.players.map((p, i) => ({ p, i })).filter(x => !x.p.finished && !x.p.eliminated && !x.p.left);
+    document.getElementById('managePlayersActiveList').innerHTML = active.length ? active.map(({ p, i }) => `
+        <div class="player-item">
+            <span>${p.name}${p.away ? ' 🍺' : ''}${i === gameState.currentPlayerIndex ? ' ▶' : ''}</span>
+            <button class="danger" onclick="markPlayerLeftEarly(${i})">🚪 Left Early</button>
+        </div>
+    `).join('') : '<p class="setup-note">Nobody currently active.</p>';
+
+    const left = gameState.players.map((p, i) => ({ p, i })).filter(x => x.p.left);
+    document.getElementById('managePlayersLeftSection').style.display = left.length ? 'block' : 'none';
+    document.getElementById('managePlayersLeftList').innerHTML = left.map(({ p, i }) => `
+        <div class="player-item">
+            <span>${p.name}</span>
+            <button class="secondary" onclick="undoPlayerLeft(${i})">Undo</button>
+        </div>
+    `).join('');
+}
+
+function addLateArrivalManual() {
+    const input = document.getElementById('lateJoinNameInput');
+    const name = input.value.trim();
+    if (!name) return;
+    input.value = '';
+    addLateArrival(name);
+}
+
+function addLateArrival(name) {
+    if (gameState.players.some(p => p.name === name)) return;
+    if (gameState.players.length >= 12) { alert('Maximum 12 players'); return; }
+    addToRoster(name);
+
+    if (gameState.gameMode === 'x01') {
+        gameState.players.push({
+            name, score: gameState.gameType, turns: 0, totalScored: 0,
+            finished: false, place: null, away: false, left: false
+        });
+        gameState.hasStarted.push(false);
+        renderScoreboard();
+        showScreen(managePlayersReturnScreen);
+        return;
+    }
+
+    if (gameState.gameMode === 'killer') {
+        gameState.players.push({
+            name, strikes: 0, claimedNumber: null, eliminated: false,
+            place: null, away: false, left: false
+        });
+    } else {
+        gameState.players.push({
+            name, claimedNumber: null,
+            shHits: { single: false, double: false, triple: false },
+            finished: false, place: null, away: false, left: false
+        });
+    }
+
+    lateJoinState.name = name;
+    lateJoinSelectedNumber = null;
+    renderLateJoinClaimGrid();
+    document.getElementById('lateJoinClaimIntro').textContent =
+        `${name} — non-dominant hand until they land on a free number, same as everyone else at the start.`;
+    document.getElementById('confirmLateJoinBtn').disabled = true;
+    showScreen('lateJoinClaimScreen');
+}
+
+function renderLateJoinClaimGrid() {
+    const grid = document.getElementById('lateJoinClaimGrid');
+    const numbers = [];
+    for (let i = 1; i <= 20; i++) numbers.push(i);
+    if (gameState.gameMode === 'killer') numbers.push(25, 50);
+
+    grid.innerHTML = numbers.map(n => {
+        const claimed = gameState.claimedNumbers.includes(n);
+        const disabled = claimed ? 'disabled' : '';
+        const style = claimed ? 'opacity: 0.3;' : '';
+        return `<button class="number-btn" onclick="selectLateJoinNumber(${n})" ${disabled} style="${style}">${n}</button>`;
+    }).join('');
+}
+
+function selectLateJoinNumber(num) {
+    if (gameState.claimedNumbers.includes(num)) return;
+    lateJoinSelectedNumber = num;
+    document.querySelectorAll('#lateJoinClaimGrid .number-btn').forEach(btn => btn.classList.remove('selected'));
+    event.target.classList.add('selected');
+    document.getElementById('confirmLateJoinBtn').disabled = false;
+}
+
+function confirmLateJoinClaim() {
+    if (lateJoinSelectedNumber === null) return;
+    const player = gameState.players.find(p => p.name === lateJoinState.name && p.claimedNumber === null);
+    if (!player) return;
+
+    player.claimedNumber = lateJoinSelectedNumber;
+    gameState.claimedNumbers.push(lateJoinSelectedNumber);
+    lateJoinState.name = null;
+    lateJoinSelectedNumber = null;
+
+    renderCurrentModeScoreboard();
+    showScreen(gameState.gameMode === 'killer' ? 'killerGameScreen' : 'shanghaiGameScreen');
+}
+
+function cancelLateJoinClaim() {
+    // The player was already pushed onto gameState.players when the claim
+    // screen opened, but never actually claimed a number — remove them,
+    // they never joined.
+    const idx = gameState.players.findIndex(p => p.name === lateJoinState.name && p.claimedNumber === null);
+    if (idx !== -1) gameState.players.splice(idx, 1);
+    lateJoinState.name = null;
+    lateJoinSelectedNumber = null;
+    showScreen(gameState.gameMode === 'killer' ? 'killerGameScreen' : 'shanghaiGameScreen');
+}
+
+function markPlayerLeftEarly(index) {
+    const player = gameState.players[index];
+    if (!player || player.left) return;
+
+    const isCurrent = index === gameState.currentPlayerIndex;
+    if (isCurrent && eligiblePlayerCount(index) === 0) {
+        alert(`Can't remove ${player.name} right now — everyone else is already away, finished, or eliminated.`);
+        return;
+    }
+    if (!confirm(`Remove ${player.name} from the game? They'll stay in the results as unplaced and won't get another turn.`)) return;
+
+    player.left = true;
+
+    if (isCurrent) {
+        if (gameState.gameMode === 'x01') {
+            gameState.currentDarts = [];
+            nextPlayer();
+        } else if (gameState.gameMode === 'killer') {
+            killerState.currentDarts = [];
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+            startKillerTurn();
+        } else {
+            shanghaiState.currentDarts = [];
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+            startShanghaiTurn();
+        }
+    } else {
+        renderCurrentModeScoreboard();
+    }
+
+    renderManagePlayers();
+}
+
+function undoPlayerLeft(index) {
+    const player = gameState.players[index];
+    if (!player || !player.left) return;
+    player.left = false;
+    renderCurrentModeScoreboard();
+    renderManagePlayers();
+}
+
+// ===== END MANAGE PLAYERS =====
+
 // ===== CLUB HISTORY (match records) =====
 // Every finished game is saved on this device automatically.
 // "Publish to Club History" opens GitHub with the match record
@@ -3834,6 +4125,8 @@ function resetGame() {
 
     showScreen('setupScreen');
 }
+
+renderRosterCheckboxes();
 </script>
 
 </body>
