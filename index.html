@@ -1072,7 +1072,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a> &nbsp;·&nbsp; <a href="tipping/index.html">Tipping</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v3.12</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v3.13</span>
 </footer>
 
 <!-- Persistent broadcast control — reachable from any screen mid-game,
@@ -2740,7 +2740,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.12', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.13', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
