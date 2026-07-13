@@ -731,6 +731,8 @@
 
     <div class="scoreboard" id="scoreboard"></div>
 
+    <div id="x01AwayBar" style="display: none; margin: 10px 0;"></div>
+
     <div class="remaining-score" id="remainingScore">301</div>
 
     <div class="dart-input">
@@ -759,6 +761,8 @@
     <button onclick="endTurn()" id="endTurnBtn">End Turn</button>
 
     <button class="secondary" onclick="clearTurn()">Clear Turn</button>
+
+    <button class="secondary" onclick="skipCurrentPlayerToBar()">🍺 Skip Turn (At the Bar)</button>
 
     <button class="danger" onclick="confirmReset()">Reset Game</button>
 
@@ -901,6 +905,8 @@
 
     <div class="scoreboard" id="killerScoreboard"></div>
 
+    <div id="killerAwayBar" style="display: none; margin: 10px 0;"></div>
+
     <div class="dart-input">
         <h2 id="killerCurrentPlayer">Player's Turn</h2>
         <div style="text-align: center; color: #b9ad92; margin: 10px 0;">
@@ -931,6 +937,8 @@
     <button onclick="endKillerTurn()">End Turn</button>
 
     <button class="secondary" onclick="clearKillerTurn()">Clear Turn</button>
+
+    <button class="secondary" onclick="skipCurrentPlayerToBar()">🍺 Skip Turn (At the Bar)</button>
 
     <button class="danger" onclick="confirmReset()">Reset Game</button>
 
@@ -963,6 +971,8 @@
 
     <div class="scoreboard" id="shanghaiScoreboard"></div>
 
+    <div id="shanghaiAwayBar" style="display: none; margin: 10px 0;"></div>
+
     <div class="dart-input">
         <h2 id="shanghaiCurrentPlayer">Player's Turn</h2>
         <div style="text-align: center; color: #b9ad92; margin: 10px 0;">
@@ -987,6 +997,8 @@
 
     <button onclick="manualEndShanghaiTurn()" id="endShanghaiTurnBtn">End Turn</button>
 
+    <button class="secondary" onclick="skipCurrentPlayerToBar()">🍺 Skip Turn (At the Bar)</button>
+
     <button class="danger" onclick="confirmReset()">Reset Game</button>
 
     <div class="history" id="shanghaiHistory"></div>
@@ -997,7 +1009,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a> &nbsp;·&nbsp; <a href="tipping/index.html">Tipping</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v3.3</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v3.4</span>
 </footer>
 
 <!-- Persistent broadcast control — reachable from any screen mid-game,
@@ -1045,7 +1057,8 @@ let gameState = {
     turnStartScore: null,
     claimedNumbers: [],
     bonusPint: false,
-    practiceMode: false
+    practiceMode: false,
+    returnQueue: []
 };
 
 function togglePracticeMode() {
@@ -1116,7 +1129,8 @@ function addPlayer() {
         name: name,
         score: 0,
         turns: 0,
-        totalScored: 0
+        totalScored: 0,
+        away: false
     });
 
     renderSetupPlayers();
@@ -1167,11 +1181,13 @@ function startX01Game() {
         p.totalScored = 0;
         p.finished = false;
         p.place = null;
+        p.away = false;
     });
     gameState.currentPlayerIndex = 0;
     gameState.history = [];
     gameState.x01Placings = [];
     gameState.hasStarted = gameState.players.map(() => false);
+    gameState.returnQueue = [];
 
     showScreen('gameScreen');
     renderNumberGrid();
@@ -1185,10 +1201,12 @@ function startKillerGame() {
         p.claimedNumber = null;
         p.eliminated = false;
         p.place = null;
+        p.away = false;
     });
     gameState.currentPlayerIndex = 0;
     gameState.history = [];
     gameState.claimedNumbers = [];
+    gameState.returnQueue = [];
     killerState.selectedPlayerIndex = null;
     killerState.selectedNumber = null;
     killerState.claimOrder = [];
@@ -1630,13 +1648,87 @@ function showSummary(playerName, scored, newTotal, isBust, bustReason, finishPla
 }
 
 function nextPlayer() {
-    // Skip players who have already taken a place
+    // A returning player (back from the bar) jumps the queue, ahead of
+    // normal rotation order.
+    if (gameState.returnQueue.length > 0) {
+        const returning = gameState.returnQueue.shift();
+        const idx = gameState.players.indexOf(returning);
+        if (idx !== -1 && !returning.finished) {
+            gameState.currentPlayerIndex = idx;
+            showScreen('gameScreen');
+            startTurn();
+            return;
+        }
+    }
+
+    // Skip players who have already taken a place, or are away from the board
     do {
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
-    } while (gameState.players[gameState.currentPlayerIndex].finished);
+    } while (gameState.players[gameState.currentPlayerIndex].finished || gameState.players[gameState.currentPlayerIndex].away);
     showScreen('gameScreen');
     startTurn();
 }
+
+// ===== AWAY FROM THE BOARD (skip a turn, give it back on return) =====
+
+function eligiblePlayerCount(excludeIndex) {
+    return gameState.players.filter((p, i) =>
+        i !== excludeIndex && !p.finished && !p.eliminated && !p.away
+    ).length;
+}
+
+function skipCurrentPlayerToBar() {
+    const idx = gameState.currentPlayerIndex;
+    const player = gameState.players[idx];
+
+    if (eligiblePlayerCount(idx) === 0) {
+        alert(`Can't skip ${player.name} right now — everyone else is already away, finished, or eliminated.`);
+        return;
+    }
+    if (!confirm(`Mark ${player.name} as away from the board? Their turn skips for now — tap "They're Back" once they return, and they'll get the very next turn.`)) return;
+
+    player.away = true;
+
+    if (gameState.gameMode === 'x01') {
+        gameState.currentDarts = [];
+        nextPlayer();
+    } else if (gameState.gameMode === 'killer') {
+        killerState.currentDarts = [];
+        gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+        startKillerTurn();
+    } else {
+        shanghaiState.currentDarts = [];
+        gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+        startShanghaiTurn();
+    }
+
+    renderAwayList();
+}
+
+function markPlayerBack(index) {
+    const player = gameState.players[index];
+    if (!player || !player.away) return;
+    player.away = false;
+    gameState.returnQueue.push(player);
+    renderAwayList();
+}
+
+function renderAwayList() {
+    const rows = gameState.players.map((p, i) => ({ p, i })).filter(x => x.p.away);
+    const id = { x01: 'x01AwayBar', killer: 'killerAwayBar', shanghai: 'shanghaiAwayBar' }[gameState.gameMode];
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!rows.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    el.style.display = 'block';
+    el.innerHTML = '<div class="label">At the Bar</div>' + rows.map(({ p, i }) => `
+        <div class="player-score">
+            <div class="player-info"><div class="player-name">${p.name}</div></div>
+            <button class="secondary" style="width: auto;" onclick="markPlayerBack(${i})">They're Back</button>
+        </div>
+    `).join('');
+}
+
+// ===== END AWAY FROM THE BOARD =====
 
 function x01HistoryLine(h) {
     if (h.auto) return `${h.player}: Takes ${shanghaiOrdinal(h.place)} — last player left`;
@@ -1733,8 +1825,9 @@ function renderScoreboard() {
     const board = document.getElementById('scoreboard');
     board.innerHTML = gameState.players.map((player, i) => {
         const avg = player.turns > 0 ? (player.totalScored / player.turns).toFixed(1) : '0.0';
-        const isCurrent = i === gameState.currentPlayerIndex && !player.finished;
-        const finishedStyle = player.finished ? 'opacity: 0.65;' : '';
+        const isCurrent = i === gameState.currentPlayerIndex && !player.finished && !player.away;
+        const finishedStyle = (player.finished || player.away) ? 'opacity: 0.65;' : '';
+        const awayText = player.away ? ' 🍺 At the Bar' : '';
         const scoreHtml = player.finished
             ? `<div class="score-display" style="font-size: 22px; color: #c9a13b;">${shanghaiOrdinal(player.place).toUpperCase()}</div>`
             : `<div class="score-display">${player.score}</div>`;
@@ -1742,7 +1835,7 @@ function renderScoreboard() {
         return `
             <div class="player-score ${isCurrent ? 'current' : ''}" style="${finishedStyle}">
                 <div class="player-info">
-                    <div class="player-name">${player.name}</div>
+                    <div class="player-name">${player.name}${awayText}</div>
                     <div class="player-avg">Avg: ${avg}</div>
                 </div>
                 ${scoreHtml}
@@ -1906,13 +1999,13 @@ function startKillerPlay() {
 function renderKillerScoreboard() {
     const board = document.getElementById('killerScoreboard');
     board.innerHTML = gameState.players.map((player, i) => {
-        const isCurrent = i === gameState.currentPlayerIndex && !player.eliminated;
+        const isCurrent = i === gameState.currentPlayerIndex && !player.eliminated && !player.away;
         const numText = player.claimedNumber === 25 ? 'Bull 25' :
                        player.claimedNumber === 50 ? 'Bull 50' :
                        player.claimedNumber;
 
-        const eliminatedStyle = player.eliminated ? 'opacity: 0.5; text-decoration: line-through;' : '';
-        const eliminatedText = player.eliminated ? ' - ELIMINATED' : '';
+        const eliminatedStyle = player.eliminated ? 'opacity: 0.5; text-decoration: line-through;' : (player.away ? 'opacity: 0.65;' : '');
+        const eliminatedText = player.eliminated ? ' - ELIMINATED' : (player.away ? ' 🍺 At the Bar' : '');
 
         return `
             <div class="player-score ${isCurrent ? 'current' : ''}" style="${eliminatedStyle}">
@@ -1938,8 +2031,18 @@ function renderKillerNumberGrid() {
 }
 
 function startKillerTurn() {
-    // Skip eliminated players
-    while (gameState.players[gameState.currentPlayerIndex].eliminated) {
+    // A returning player (back from the bar) jumps the queue, ahead of
+    // normal rotation order.
+    if (gameState.returnQueue.length > 0) {
+        const returning = gameState.returnQueue.shift();
+        const idx = gameState.players.indexOf(returning);
+        if (idx !== -1 && !returning.eliminated) {
+            gameState.currentPlayerIndex = idx;
+        }
+    }
+
+    // Skip eliminated or away players
+    while (gameState.players[gameState.currentPlayerIndex].eliminated || gameState.players[gameState.currentPlayerIndex].away) {
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
     }
 
@@ -2510,7 +2613,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.3', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.4', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
@@ -2576,10 +2679,12 @@ function startShanghaiGame() {
         p.shHits = { single: false, double: false, triple: false };
         p.finished = false;
         p.place = null;
+        p.away = false;
     });
     gameState.currentPlayerIndex = 0;
     gameState.history = [];
     gameState.claimedNumbers = [];
+    gameState.returnQueue = [];
     shanghaiState.selectedPlayerIndex = null;
     shanghaiState.selectedNumber = null;
     shanghaiState.claimOrder = [];
@@ -2707,7 +2812,7 @@ function startShanghaiPlay() {
 function renderShanghaiScoreboard() {
     const board = document.getElementById('shanghaiScoreboard');
     board.innerHTML = gameState.players.map((player, i) => {
-        const isCurrent = i === gameState.currentPlayerIndex && !player.finished;
+        const isCurrent = i === gameState.currentPlayerIndex && !player.finished && !player.away;
 
         let status;
         if (player.finished) {
@@ -2717,13 +2822,14 @@ function renderShanghaiScoreboard() {
             status = `Single ${seg('single')} · Double ${seg('double')} · Triple ${seg('triple')}`;
         }
 
-        const finishedStyle = player.finished ? 'opacity: 0.65;' : '';
+        const finishedStyle = (player.finished || player.away) ? 'opacity: 0.65;' : '';
+        const awayText = player.away ? ' 🍺 At the Bar' : '';
         const placeText = player.finished ? shanghaiOrdinal(player.place).toUpperCase() : '';
 
         return `
             <div class="player-score ${isCurrent ? 'current' : ''}" style="${finishedStyle}">
                 <div class="player-info">
-                    <div class="player-name">${player.name} (${player.claimedNumber})</div>
+                    <div class="player-name">${player.name} (${player.claimedNumber})${awayText}</div>
                     <div class="player-avg">${status}</div>
                 </div>
                 <div class="score-display" style="font-size: 22px; color: #c9a13b;">${placeText}</div>
@@ -2748,8 +2854,18 @@ function updateShanghaiHitButtons() {
 }
 
 function startShanghaiTurn() {
-    // Skip finished players
-    while (gameState.players[gameState.currentPlayerIndex].finished) {
+    // A returning player (back from the bar) jumps the queue, ahead of
+    // normal rotation order.
+    if (gameState.returnQueue.length > 0) {
+        const returning = gameState.returnQueue.shift();
+        const idx = gameState.players.indexOf(returning);
+        if (idx !== -1 && !returning.finished) {
+            gameState.currentPlayerIndex = idx;
+        }
+    }
+
+    // Skip finished or away players
+    while (gameState.players[gameState.currentPlayerIndex].finished || gameState.players[gameState.currentPlayerIndex].away) {
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
     }
 
@@ -3611,7 +3727,8 @@ function resetGame() {
         turnStartScore: null,
         claimedNumbers: [],
         bonusPint: false,
-        practiceMode: false
+        practiceMode: false,
+        returnQueue: []
     };
 
     killerState = {
