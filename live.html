@@ -529,6 +529,7 @@
     <div class="controls">
         <button class="ghost" id="alertsBtn" onclick="toggleAlerts()">🔔 Alerts: Off</button>
         <button class="ghost" id="tvBtn" onclick="toggleTv()">📺 Big Screen</button>
+        <button class="ghost" id="swapBtn" onclick="swapBoards()" style="display: none;">⇄ Swap Sides</button>
     </div>
 
     <div id="addBoardRow" class="center" style="margin-bottom: 10px;">
@@ -548,7 +549,7 @@
 
 <footer class="club-footer">
     <a href="index.html">Scoreboard</a> &nbsp;·&nbsp; <a href="rules.html">House Rules</a> &nbsp;·&nbsp; <a href="history.html">Club History</a> &nbsp;·&nbsp; <a href="tipping/index.html">Tipping</a>
-    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v3.11</div>
+    <div style="margin-top: 8px; font-size: 13px;">Bellbrook Darts Club Scoreboard · v3.12</div>
 </footer>
 
 <!-- End-of-turn quick stats card -->
@@ -1223,6 +1224,7 @@ function connectAll(rooms) {
     wrap.classList.toggle('dual', rooms.length > 1);
     wrap.innerHTML = rooms.map((r, i) => boardHtml(i + 1)).join('');
     updateAddBoardVisibility();
+    updateSwapVisibility();
 
     const begin = () => rooms.forEach((r, i) => {
         startBoard(r, i + 1);
@@ -1249,6 +1251,23 @@ function updateAddBoardVisibility() {
     document.getElementById('addBoardRow').style.display = totalBoards >= 2 ? 'none' : 'block';
 }
 
+function updateSwapVisibility() {
+    document.getElementById('swapBtn').style.display = totalBoards >= 2 ? 'inline-block' : 'none';
+}
+
+// Pure DOM reorder — each board's JS state (startBoard/startCameraSignal
+// closures) is bound to its element via getElementById, which stays a
+// live reference regardless of where the node sits in the tree, so
+// swapping the two .board sections is all that's needed to flip which
+// side of the screen (or which row, in portrait) each one appears on.
+function swapBoards() {
+    const wrap = document.getElementById('boards');
+    const first = wrap.children[0];
+    const second = wrap.children[1];
+    if (!first || !second) return;
+    wrap.insertBefore(second, first);
+}
+
 function showAddBoard() {
     document.getElementById('addBoardRow').style.display = 'none';
     document.getElementById('addBoardForm').style.display = 'block';
@@ -1273,6 +1292,7 @@ function addSecondBoard() {
     // Board 1's label had no "Board 1 ·" prefix while it was the only
     // board; now that a second one exists, relabel it for clarity.
     boards.forEach(b => { b._q('.board-label').textContent = `Board ${b.n} · Room ${b.room}`; });
+    updateSwapVisibility();
 
     document.getElementById('addBoardForm').style.display = 'none';
     document.getElementById('addBoardInput').value = '';
