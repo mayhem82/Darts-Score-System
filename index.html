@@ -1072,7 +1072,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a> &nbsp;·&nbsp; <a href="tipping/index.html">Tipping</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v3.10</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v3.11</span>
 </footer>
 
 <!-- Persistent broadcast control — reachable from any screen mid-game,
@@ -1237,8 +1237,15 @@ function renderRosterCheckboxes() {
                        onchange="toggleRosterPlayer('${name.replace(/'/g, "\\'")}', this.checked)">
                 ${name}
             </label>
+            <button class="secondary" onclick="deleteFromRoster('${name.replace(/'/g, "\\'")}')">Delete</button>
         </div>
     `).join('') : '<p class="setup-note">No saved players yet — add someone below and they\'ll be remembered here.</p>';
+}
+
+function deleteFromRoster(name) {
+    if (!confirm(`Remove ${name} from the Club Roster? This won't affect tonight's game if they're already added.`)) return;
+    removeFromRoster(name);
+    renderRosterCheckboxes();
 }
 
 function toggleRosterPlayer(name, checked) {
@@ -2733,7 +2740,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.10', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.11', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
@@ -3483,6 +3490,10 @@ function addToRoster(name) {
         roster.push(name);
         saveRoster(roster);
     }
+}
+
+function removeFromRoster(name) {
+    saveRoster(loadRoster().filter(n => n !== name));
 }
 
 // ===== END CLUB ROSTER =====
