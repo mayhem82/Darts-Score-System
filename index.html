@@ -613,6 +613,8 @@
 
     <p class="setup-note">ONE device keeps score for the whole game. Everyone else just watches.</p>
 
+    <p class="setup-note" id="dartsNightCountdown" style="color: #c9a13b; font-weight: 600;"></p>
+
     <button onclick="showScreen('setupScreen')">🎯 Keep Score</button>
     <p class="setup-note" style="margin: 5px 0 25px;">The scorer's device — set up the game and enter every dart.</p>
 
@@ -718,10 +720,11 @@
 
     <h2>Practice Mode</h2>
     <p class="setup-note">Play a full game without saving anything — not to this device's history, and there's nothing to publish to Club History afterwards. Use this for testing or a knockabout that shouldn't count.</p>
-    <div id="leagueWindowNotice" class="setup-note" style="display: none;">🔒 League scoring is only available Wednesdays, 5:30–7:30 PM. Outside that window every game is Practice Mode and won't be saved.</div>
+    <div id="leagueWindowNotice" class="setup-note" style="display: none;">🔒 League scoring is open Wednesdays from 5:30 PM until night's finished (or midnight). Outside that, every game is Practice Mode and won't be saved.</div>
     <div class="game-select">
         <button id="practiceModeBtn" class="secondary" onclick="togglePracticeMode()">Practice Mode: Off</button>
     </div>
+    <button id="endDartsNightBtn" class="secondary" onclick="endDartsNight()" style="display: none;">🔒 Night Finished — Lock Scoring</button>
 
     <button onclick="startGame()" id="startGameBtn" disabled>Start Game</button>
 
@@ -1073,7 +1076,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a> &nbsp;·&nbsp; <a href="tipping/index.html">Tipping</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v3.14</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v3.15</span>
 </footer>
 
 <!-- Persistent broadcast control — reachable from any screen mid-game,
@@ -1149,27 +1152,91 @@ function isLeagueWindowOpen() {
     // device's own timezone setting, so the window is correct for
     // everyone at the venue regardless of each phone's own clock config.
     const parts = new Intl.DateTimeFormat('en-AU', {
-        timeZone: 'Australia/Sydney', weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false
+        timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit',
+        weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false
     }).formatToParts(new Date());
     const get = type => parts.find(p => p.type === type).value;
+    const dateStr = `${get('year')}-${get('month')}-${get('day')}`;
+    if (localStorage.getItem('bbdc-night-finished-date') === dateStr) return false;
     const minutes = (parseInt(get('hour'), 10) % 24) * 60 + parseInt(get('minute'), 10);
-    return get('weekday') === 'Wed' && minutes >= 17 * 60 + 30 && minutes < 19 * 60 + 30; // Wed 5:30–7:30 PM
+    return get('weekday') === 'Wed' && minutes >= 17 * 60 + 30; // Wed 5:30 PM until midnight, or until finished
+}
+
+function endDartsNight() {
+    if (!confirm('End darts night now? Real scoring will lock until next Wednesday 5:30 PM (Practice Mode still works anytime).')) return;
+    const parts = new Intl.DateTimeFormat('en-AU', {
+        timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date());
+    const get = type => parts.find(p => p.type === type).value;
+    localStorage.setItem('bbdc-night-finished-date', `${get('year')}-${get('month')}-${get('day')}`);
+    updatePracticeModeLock();
+    updateDartsNightCountdown();
 }
 
 function updatePracticeModeLock() {
     const btn = document.getElementById('practiceModeBtn');
     const notice = document.getElementById('leagueWindowNotice');
+    const endBtn = document.getElementById('endDartsNightBtn');
     if (!btn || !notice) return;
     if (isLeagueWindowOpen()) {
         btn.disabled = false;
         notice.style.display = 'none';
+        if (endBtn) endBtn.style.display = 'block';
     } else {
         gameState.practiceMode = true;
         btn.textContent = 'Practice Mode: On (Locked)';
         btn.classList.remove('secondary');
         btn.disabled = true;
         notice.style.display = 'block';
+        if (endBtn) endBtn.style.display = 'none';
     }
+}
+
+function sydneyNowAsUTC() {
+    const parts = new Intl.DateTimeFormat('en-AU', {
+        timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false
+    }).formatToParts(new Date());
+    const get = type => parseInt(parts.find(p => p.type === type).value, 10);
+    return new Date(Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'), get('second')));
+}
+
+function nextLeagueWindowInfo() {
+    const now = sydneyNowAsUTC();
+    if (isLeagueWindowOpen()) {
+        const midnight = new Date(now);
+        midnight.setUTCHours(24, 0, 0, 0);
+        return { open: true, ms: midnight - now };
+    }
+    const target = new Date(now);
+    target.setUTCHours(17, 30, 0, 0);
+    let dayDiff = (3 - now.getUTCDay() + 7) % 7; // 3 = Wednesday
+    if (dayDiff === 0 && now.getUTCHours() * 60 + now.getUTCMinutes() >= 17 * 60 + 30) {
+        dayDiff = 7; // today is Wednesday but window already closed (time or finished) — roll to next week
+    }
+    target.setUTCDate(target.getUTCDate() + dayDiff);
+    return { open: false, ms: target - now };
+}
+
+function formatCountdown(ms) {
+    const totalMinutes = Math.max(0, Math.round(ms / 60000));
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    const minutes = totalMinutes % 60;
+    const parts = [];
+    if (days) parts.push(days + 'd');
+    if (days || hours) parts.push(hours + 'h');
+    parts.push(minutes + 'm');
+    return parts.join(' ');
+}
+
+function updateDartsNightCountdown() {
+    const el = document.getElementById('dartsNightCountdown');
+    if (!el) return;
+    const info = nextLeagueWindowInfo();
+    el.textContent = info.open
+        ? `🎯 Darts night is on now! Scoring stays open until marked finished (auto-closes by midnight — ${formatCountdown(info.ms)} left).`
+        : `⏳ Next darts night in ${formatCountdown(info.ms)} (Wed from 5:30 PM).`;
 }
 
 function selectPlaces(n) {
@@ -2012,6 +2079,7 @@ function showScreen(screenId) {
     const fab = document.getElementById('liveFab');
     if (fab) fab.style.display = screenId === 'roleScreen' ? 'none' : 'flex';
     if (screenId === 'setupScreen') updatePracticeModeLock();
+    if (screenId === 'roleScreen') updateDartsNightCountdown();
 }
 
 function watchLive() {
@@ -2771,7 +2839,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.14', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.15', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
@@ -4198,6 +4266,8 @@ function resetGame() {
 }
 
 renderRosterCheckboxes();
+updateDartsNightCountdown();
+setInterval(updateDartsNightCountdown, 60000);
 </script>
 
 </body>
