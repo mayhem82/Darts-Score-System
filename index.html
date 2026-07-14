@@ -718,6 +718,7 @@
 
     <h2>Practice Mode</h2>
     <p class="setup-note">Play a full game without saving anything — not to this device's history, and there's nothing to publish to Club History afterwards. Use this for testing or a knockabout that shouldn't count.</p>
+    <div id="leagueWindowNotice" class="setup-note" style="display: none;">🔒 League scoring is only available Wednesdays, 5:30–7:30 PM. Outside that window every game is Practice Mode and won't be saved.</div>
     <div class="game-select">
         <button id="practiceModeBtn" class="secondary" onclick="togglePracticeMode()">Practice Mode: Off</button>
     </div>
@@ -1072,7 +1073,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a> &nbsp;·&nbsp; <a href="tipping/index.html">Tipping</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v3.13</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v3.14</span>
 </footer>
 
 <!-- Persistent broadcast control — reachable from any screen mid-game,
@@ -1141,6 +1142,34 @@ function togglePracticeMode() {
     const btn = document.getElementById('practiceModeBtn');
     btn.textContent = 'Practice Mode: ' + (gameState.practiceMode ? 'On' : 'Off');
     btn.classList.toggle('secondary', !gameState.practiceMode);
+}
+
+function isLeagueWindowOpen() {
+    // Pinned to Australia/Sydney (Bellbrook NSW) explicitly, not the
+    // device's own timezone setting, so the window is correct for
+    // everyone at the venue regardless of each phone's own clock config.
+    const parts = new Intl.DateTimeFormat('en-AU', {
+        timeZone: 'Australia/Sydney', weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false
+    }).formatToParts(new Date());
+    const get = type => parts.find(p => p.type === type).value;
+    const minutes = (parseInt(get('hour'), 10) % 24) * 60 + parseInt(get('minute'), 10);
+    return get('weekday') === 'Wed' && minutes >= 17 * 60 + 30 && minutes < 19 * 60 + 30; // Wed 5:30–7:30 PM
+}
+
+function updatePracticeModeLock() {
+    const btn = document.getElementById('practiceModeBtn');
+    const notice = document.getElementById('leagueWindowNotice');
+    if (!btn || !notice) return;
+    if (isLeagueWindowOpen()) {
+        btn.disabled = false;
+        notice.style.display = 'none';
+    } else {
+        gameState.practiceMode = true;
+        btn.textContent = 'Practice Mode: On (Locked)';
+        btn.classList.remove('secondary');
+        btn.disabled = true;
+        notice.style.display = 'block';
+    }
 }
 
 function selectPlaces(n) {
@@ -1283,6 +1312,7 @@ function checkStartButton() {
 }
 
 function startGame() {
+    updatePracticeModeLock();
     if (gameState.gameMode === 'x01') {
         startX01Game();
     } else if (gameState.gameMode === 'killer') {
@@ -1981,6 +2011,7 @@ function showScreen(screenId) {
     // hide it on the very first "what is this phone doing" screen.
     const fab = document.getElementById('liveFab');
     if (fab) fab.style.display = screenId === 'roleScreen' ? 'none' : 'flex';
+    if (screenId === 'setupScreen') updatePracticeModeLock();
 }
 
 function watchLive() {
@@ -2740,7 +2771,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.13', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.14', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
