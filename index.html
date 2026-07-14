@@ -720,7 +720,7 @@
 
     <h2>Practice Mode</h2>
     <p class="setup-note">Play a full game without saving anything — not to this device's history, and there's nothing to publish to Club History afterwards. Use this for testing or a knockabout that shouldn't count.</p>
-    <div id="leagueWindowNotice" class="setup-note" style="display: none;">🔒 League scoring is open Wednesdays from 5:30 PM until night's finished (or midnight). Outside that, every game is Practice Mode and won't be saved.</div>
+    <div id="leagueWindowNotice" class="setup-note" style="display: none;">🔒 League scoring is open Wednesdays from 5:15 PM until night's finished (or midnight). Outside that, every game is Practice Mode and won't be saved.</div>
     <div class="game-select">
         <button id="practiceModeBtn" class="secondary" onclick="togglePracticeMode()">Practice Mode: Off</button>
     </div>
@@ -1076,7 +1076,7 @@
 <footer class="club-footer">
     <a href="rules.html">House Rules &amp; Code of Conduct</a> &nbsp;·&nbsp; <a href="live.html">Live Scores</a> &nbsp;·&nbsp; <a href="history.html">Club History</a> &nbsp;·&nbsp; <a href="tipping/index.html">Tipping</a>
     <span class="version" id="liveFooterRoom" style="color: #b23a2e; font-weight: 700;"></span>
-    <span class="version">Bellbrook Darts Club Scoreboard · v3.15</span>
+    <span class="version">Bellbrook Darts Club Scoreboard · v3.16</span>
 </footer>
 
 <!-- Persistent broadcast control — reachable from any screen mid-game,
@@ -1159,11 +1159,11 @@ function isLeagueWindowOpen() {
     const dateStr = `${get('year')}-${get('month')}-${get('day')}`;
     if (localStorage.getItem('bbdc-night-finished-date') === dateStr) return false;
     const minutes = (parseInt(get('hour'), 10) % 24) * 60 + parseInt(get('minute'), 10);
-    return get('weekday') === 'Wed' && minutes >= 17 * 60 + 30; // Wed 5:30 PM until midnight, or until finished
+    return get('weekday') === 'Wed' && minutes >= 17 * 60 + 15; // Wed 5:15 PM until midnight, or until finished
 }
 
 function endDartsNight() {
-    if (!confirm('End darts night now? Real scoring will lock until next Wednesday 5:30 PM (Practice Mode still works anytime).')) return;
+    if (!confirm('End darts night now? Real scoring will lock until next Wednesday 5:15 PM (Practice Mode still works anytime).')) return;
     const parts = new Intl.DateTimeFormat('en-AU', {
         timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit'
     }).formatToParts(new Date());
@@ -1209,9 +1209,9 @@ function nextLeagueWindowInfo() {
         return { open: true, ms: midnight - now };
     }
     const target = new Date(now);
-    target.setUTCHours(17, 30, 0, 0);
+    target.setUTCHours(17, 15, 0, 0);
     let dayDiff = (3 - now.getUTCDay() + 7) % 7; // 3 = Wednesday
-    if (dayDiff === 0 && now.getUTCHours() * 60 + now.getUTCMinutes() >= 17 * 60 + 30) {
+    if (dayDiff === 0 && now.getUTCHours() * 60 + now.getUTCMinutes() >= 17 * 60 + 15) {
         dayDiff = 7; // today is Wednesday but window already closed (time or finished) — roll to next week
     }
     target.setUTCDate(target.getUTCDate() + dayDiff);
@@ -1236,7 +1236,7 @@ function updateDartsNightCountdown() {
     const info = nextLeagueWindowInfo();
     el.textContent = info.open
         ? `🎯 Darts night is on now! Scoring stays open until marked finished (auto-closes by midnight — ${formatCountdown(info.ms)} left).`
-        : `⏳ Next darts night in ${formatCountdown(info.ms)} (Wed from 5:30 PM).`;
+        : `⏳ Next darts night in ${formatCountdown(info.ms)} (Wed from 5:15 PM).`;
 }
 
 function selectPlaces(n) {
@@ -2839,7 +2839,7 @@ function downloadHistory() {
     parts.push(docxTable(histRows));
 
     // Footer
-    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.15', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
+    parts.push(docxPara(docxRun('Recorded by the Bellbrook Darts Club Scoreboard · v3.16', { sz: 16, color: DIM }), { before: 280, align: 'center' }));
 
     const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
